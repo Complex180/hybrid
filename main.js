@@ -70,26 +70,6 @@
     els.forEach(el => io.observe(el));
   }
 
-  function initModal() {
-    const backdrop = $("[data-modal]");
-    if (!backdrop) return;
-    const open = () => { backdrop.classList.add("is-open"); const i = $("input", backdrop); if (i) i.focus(); };
-    const close = () => backdrop.classList.remove("is-open");
-    $$("[data-open-modal]").forEach(b => b.addEventListener("click", open));
-    $$("[data-close-modal]").forEach(b => b.addEventListener("click", close));
-    backdrop.addEventListener("mousedown", e => { if (e.target === backdrop) close(); });
-    document.addEventListener("keydown", e => { if (e.key === "Escape") close(); });
-
-    const form = $("[data-login-form]", backdrop);
-    const msg = $("[data-login-msg]", backdrop);
-    if (form) {
-      form.addEventListener("submit", e => {
-        e.preventDefault();
-        if (msg) msg.textContent = "Esta sección se habilita en la próxima etapa. Por ahora, escribile a Gaby por WhatsApp.";
-      });
-    }
-  }
-
   function initSmoothAnchors() {
     document.addEventListener("click", e => {
       const a = e.target.closest('a[href^="#"]');
@@ -111,7 +91,6 @@
     safe(initWhatsApp, "initWhatsApp");
     safe(initReveals, "initReveals");
     safe(initCountUp, "initCountUp");
-    safe(initModal, "initModal");
     safe(initSmoothAnchors, "initSmoothAnchors");
     document.documentElement.classList.add("is-ready");
   }
