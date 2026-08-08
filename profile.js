@@ -1,6 +1,7 @@
 (function () {
   "use strict";
-  // ponytail: data de muestra fija, misma rutina las 4 semanas — reemplazar por Sheets/Drive en la etapa 2.
+  // ponytail: DIAS_BASE es el respaldo de muestra — se usa solo si Gaby todavía no subió
+  // la planilla real "Planificacion" a la carpeta del mes/nivel en Drive.
 
   var API_URL = "https://script.google.com/macros/s/AKfycby9c2jdl19l7tZBwxHG8Dpw6fz_bT_Chhc_WEydQAW1tiFPYtulxbaAk-MmYtMWlexrTw/exec";
 
@@ -72,6 +73,24 @@
     ["view-form", "view-nivel", "view-dashboard"].forEach(function (v) { $("#" + v).hidden = (v !== id); });
   }
 
+  // ---- Planificación real (planilla de Drive) con la de muestra como respaldo ----
+  var planCache = {}; // { OPEN: [ {semana, dias:[...]} , ... ] , PRO: [...] }
+
+  function mockSemanas(nivel) {
+    return [1, 2, 3, 4].map(function (n) { return { semana: n, dias: DIAS_BASE[nivel] }; });
+  }
+
+  function semanasFor(nivel) {
+    var real = planCache[nivel];
+    return (real && real.length) ? real : mockSemanas(nivel);
+  }
+
+  function diasDeSemana(nivel, n) {
+    var semanas = semanasFor(nivel);
+    var match = semanas.filter(function (s) { return s.semana === n; })[0];
+    return (match || semanas[0] || { dias: [] }).dias;
+  }
+
   // ---- Paso 1: formulario ----
   function fillForm(profile) {
     var form = $("[data-profile-form]");
@@ -129,9 +148,9 @@
   }
 
   // ---- helpers de render de un día (solo lectura) ----
-  function diaCardReadOnly(dia, log) {
+  function diaCardReadOnly(semana, dia, log) {
     var items = dia.ejercicios.map(function (ej) {
-      var saved = (log[dia.dia + "|" + ej.nombre] || {});
+      var saved = (log[semana + "|" + dia.dia + "|" + ej.nombre] || {});
       var peso = saved.peso ? " · " + saved.peso + "kg registrado" : "";
       var series = saved.series != null ? saved.series : ej.series;
       var reps = saved.reps != null ? saved.reps : ej.reps;
@@ -145,26 +164,27 @@
     var log = getJSON(KEYS.log) || {};
     var n = semanaActual();
     $("[data-week-label]").textContent = "Semana " + n + " de 4";
-    $("[data-week-dias]").innerHTML = DIAS_BASE[nivel].map(function (d) { return diaCardReadOnly(d, log); }).join("");
+    $("[data-week-dias]").innerHTML = diasDeSemana(nivel, n).map(function (d) { return diaCardReadOnly(n, d, log); }).join("");
   }
 
   function renderMonthly(nivel) {
     var log = getJSON(KEYS.log) || {};
     var host = $("[data-monthly-view]");
-    host.innerHTML = [1, 2, 3, 4].map(function (n) {
-      return '<div class="week-group"><p>Semana ' + n + '</p>' +
-        DIAS_BASE[nivel].map(function (d) { return diaCardReadOnly(d, log); }).join("") + '</div>';
+    host.innerHTML = semanasFor(nivel).map(function (s) {
+      return '<div class="week-group"><p>Semana ' + s.semana + '</p>' +
+        s.dias.map(function (d) { return diaCardReadOnly(s.semana, d, log); }).join("") + '</div>';
     }).join("");
   }
 
-  // ---- "Mis registros" (editable, dentro de Perfil) ----
+  // ---- "Mis registros" (editable, dentro de Perfil — semana actual) ----
   function renderRegistros(nivel) {
     var log = getJSON(KEYS.log) || {};
     var host = $("[data-registros-dias]");
     $("[data-registros-card]").hidden = false;
-    host.innerHTML = DIAS_BASE[nivel].map(function (dia) {
+    var n = semanaActual();
+    host.innerHTML = diasDeSemana(nivel, n).map(function (dia) {
       var rows = dia.ejercicios.map(function (ej) {
-        var key = dia.dia + "|" + ej.nombre;
+        var key = n + "|" + dia.dia + "|" + ej.nombre;
         var saved = log[key] || {};
         return '<tr>' +
           '<td>' + ej.nombre + '</td>' +
@@ -215,16 +235,29 @@
     }).catch(function () { /* sin conexión: se queda con la lista de muestra */ });
   }
 
-  // ---- Archivo de planificación subido por el coach este mes ----
-  function renderPlanArchivo(nivel) {
+  // ---- Planificación real: archivo subido + planilla estructurada ----
+  function renderPlanArchivo(nivel, archivos, mes) {
     var box = $("[data-plan-archivo]");
     if (!box) return;
+    if (!archivos || !archivos.length) { box.hidden = true; return; }
+    box.hidden = false;
+    box.innerHTML = "Tu coach subió la planificación de " + (mes || "").split(" ")[1] + ": " +
+      archivos.map(function (a) { return '<a href="' + a.url + '" target="_blank" rel="noopener">' + a.nombre + '</a>'; }).join(", ");
+  }
+
+  function fetchPlan(nivel) {
     fetch(API_URL + "?action=plan&nivel=" + nivel).then(function (r) { return r.json(); }).then(function (data) {
-      if (!data.ok || !data.archivos.length) { box.hidden = true; return; }
-      box.hidden = false;
-      box.innerHTML = "Tu coach subió la planificación de " + data.mes.split(" ")[1] + ": " +
-        data.archivos.map(function (a) { return '<a href="' + a.url + '" target="_blank" rel="noopener">' + a.nombre + '</a>'; }).join(", ");
-    }).catch(function () { box.hidden = true; });
+      if (!data.ok) return;
+      renderPlanArchivo(nivel, data.archivos, data.mes);
+      if (data.semanas && data.semanas.length) {
+        planCache[nivel] = data.semanas;
+        if (getJSON(KEYS.nivel) === nivel) {
+          renderWeekly(nivel);
+          renderMonthly(nivel);
+          if (!$("#view-form").hidden) renderRegistros(nivel);
+        }
+      }
+    }).catch(function () { var box = $("[data-plan-archivo]"); if (box) box.hidden = true; });
   }
 
   // ---- Dashboard boot ----
@@ -235,9 +268,9 @@
     $("[data-plan-meta]").textContent = "Nivel " + nivel + (profile.ciudad ? " · " + profile.ciudad : "");
     renderWeekly(nivel);
     renderMonthly(nivel);
-    renderPlanArchivo(nivel);
     $("[data-monthly-view]").hidden = true;
     $("[data-toggle-monthly]").textContent = "Ver planificación mensual";
+    fetchPlan(nivel);
   }
 
   function boot() {
