@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tu perfil — Complex 180</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;600;700&display=swap">
+<link rel="stylesheet" href="styles.css?v=20260807">
+</head>
+<body>
+<a href="#main" class="skip-link">Saltar al contenido</a>
+
+<header class="nav">
+  <a href="index.html" class="nav-brand">
+    <img src="assets/img/logo.jpg" alt="Complex 180 — Hybrid Training" width="120" height="120">
+  </a>
+  <div class="nav-actions">
+    <a class="btn btn-ghost" href="index.html">Volver al inicio</a>
+  </div>
+</header>
+
+<main id="main">
+
+  <section id="view-form" class="section" style="max-width:920px;">
+    <p class="kicker">Paso 1 · Datos personales</p>
+    <h1 class="section-title" data-form-title>Completá tu perfil</h1>
+    <p style="color:var(--ink-soft); margin-top:.5rem; max-width:60ch;">Estos datos los completa cada alumno una sola vez. Con esto armamos tu seguimiento y tu ficha de entrenamiento.</p>
+
+    <form data-profile-form class="profile-form">
+      <div class="pf-grid">
+        <label>Nombre<input type="text" name="nombre" required></label>
+        <label>Apellido<input type="text" name="apellido" required></label>
+        <label>Edad<input type="number" name="edad" min="12" max="90" required></label>
+        <label>Sexo
+          <select name="sexo" required>
+            <option value="">Elegir…</option>
+            <option>Femenino</option><option>Masculino</option><option>Otro</option>
+          </select>
+        </label>
+        <label>Altura (cm)<input type="number" name="altura" min="120" max="230" required></label>
+        <label>Peso (kg)<input type="number" name="peso" min="30" max="250" required></label>
+        <label>Ciudad<input type="text" name="ciudad" required></label>
+        <label>Nacionalidad<input type="text" name="nacionalidad" required></label>
+      </div>
+
+      <label class="pf-full">Historial de entrenamiento<textarea name="historialEntrenamiento" rows="2" required placeholder="Contanos qué entrenaste antes, hace cuánto, con qué frecuencia…"></textarea></label>
+      <label class="pf-full">Historial de lesiones<textarea name="historialLesiones" rows="2" required placeholder="Escribí 'Ninguna' si no tuviste lesiones"></textarea></label>
+      <label class="pf-full">Motivos de inicio y objetivos a lograr<textarea name="objetivos" rows="2" required></textarea></label>
+      <label class="pf-full">Patologías<textarea name="patologias" rows="2" required placeholder="Escribí 'Ninguna' si no tenés"></textarea></label>
+
+      <div class="pf-grid">
+        <label>Instagram <span class="pf-opt">(opcional)</span><input type="text" name="instagram" placeholder="@usuario"></label>
+        <label>Mail<input type="email" name="mail" required></label>
+        <label>WhatsApp<input type="tel" name="whatsapp" required></label>
+      </div>
+
+      <label class="pf-full">Información relevante <span class="pf-opt">(opcional)</span><textarea name="infoExtra" rows="2"></textarea></label>
+
+      <div class="pf-grid">
+        <label>Foto de perfil <span class="pf-opt">(opcional)</span><input type="file" name="fotoPerfil" accept="image/*"></label>
+        <label>Apto físico <span class="pf-opt">(opcional)</span><input type="file" name="fotoApto" accept="image/*,.pdf"></label>
+      </div>
+
+      <button type="submit" class="btn btn-primary" data-form-submit style="margin-top:1.5rem;">Guardar y continuar</button>
+    </form>
+
+    <div data-registros-card hidden style="margin-top:3rem; border-top:2px solid var(--ink); padding-top:2rem;">
+      <p class="kicker">Mis registros</p>
+      <h2 class="section-title" style="font-size:1.6rem;">Semana actual — completá tus datos</h2>
+      <p style="color:var(--ink-soft); margin-top:.5rem; max-width:60ch;">Series, repeticiones y peso usado en cada ejercicio de esta semana. Se guarda solo.</p>
+      <div data-registros-dias class="log-dias"></div>
+    </div>
+  </section>
+
+  <section id="view-nivel" class="section" style="max-width:920px;" hidden>
+    <p class="kicker">Paso 2 · Tu nivel</p>
+    <h1 class="section-title">¿OPEN o PRO?</h1>
+    <p style="color:var(--ink-soft); margin-top:.5rem; max-width:60ch;">Con tus datos guardados, elegí el nivel para armar tu planificación.</p>
+    <div class="niveles-grid" style="margin-top:2rem;">
+      <article class="nivel-card">
+        <h3 class="nivel-name">OPEN</h3>
+        <p class="nivel-para">Para arrancar fuerte o volver con orden</p>
+        <button type="button" class="btn btn-primary" data-choose-nivel="OPEN" style="margin-top:1.5rem;">Elegir OPEN</button>
+      </article>
+      <article class="nivel-card">
+        <h3 class="nivel-name">PRO</h3>
+        <p class="nivel-para">Para quien ya entrena y quiere más</p>
+        <button type="button" class="btn btn-primary" data-choose-nivel="PRO" style="margin-top:1.5rem;">Elegir PRO</button>
+      </article>
+    </div>
+  </section>
+
+  <section id="view-dashboard" hidden>
+    <div class="dash-toolbar">
+      <nav class="dash-tabs">
+        <button type="button" class="dash-tab is-active" data-dash-tab="plan">Planificación</button>
+        <button type="button" class="dash-tab" data-dash-tab="videos">Videos</button>
+      </nav>
+      <button type="button" class="btn btn-ghost" data-edit-profile>Perfil ✎</button>
+    </div>
+
+    <div class="section" style="max-width:1100px;">
+
+      <div data-dash-panel="plan">
+        <div class="plan-header">
+          <div>
+            <p class="kicker">Hola</p>
+            <h1 class="section-title" data-plan-nombre>—</h1>
+            <p style="color:var(--mute); font-family:var(--mono); font-size:.85rem;" data-plan-meta></p>
+          </div>
+        </div>
+
+        <p class="kicker" data-week-label style="margin-top:1.5rem;">Semana 1</p>
+        <div data-week-dias class="log-dias"></div>
+
+        <div class="monthly-card">
+          <div>
+            <strong>Planificación mensual</strong>
+            <p style="color:var(--mute); font-size:.85rem; margin-top:.25rem;">Las 4 semanas del mes, completas.</p>
+          </div>
+          <button type="button" class="btn btn-ghost" data-toggle-monthly>Ver planificación mensual</button>
+        </div>
+        <div data-monthly-view hidden style="margin-top:1.5rem;"></div>
+      </div>
+
+      <div data-dash-panel="videos" hidden>
+        <p class="kicker">Videos explicativos</p>
+        <h1 class="section-title">Buscá un ejercicio</h1>
+        <input type="text" data-video-search placeholder="Ej: sentadilla, remo, kettlebell…" style="margin-top:1.5rem; width:100%; max-width:420px; border:2px solid var(--ink); padding:.85rem 1rem; font-family:var(--sans);">
+        <div data-video-list class="video-list" style="margin-top:1.5rem;"></div>
+      </div>
+
+    </div>
+  </section>
+
+</main>
+
+<footer class="footer">
+  <div class="footer-inner">
+    <p class="footer-brand">Complex 180 — Hybrid Training</p>
+    <div class="footer-links"><a href="index.html">Inicio</a></div>
+  </div>
+</footer>
+
+<script defer src="lib/manifest.js"></script>
+<script defer src="profile.js?v=20260807"></script>
+</body>
+</html>
