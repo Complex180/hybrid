@@ -130,3 +130,35 @@ function test() {
   Logger.log(JSON.stringify(getVideos()));
   Logger.log(JSON.stringify(getPlan("OPEN")));
 }
+
+// correr UNA VEZ desde el editor (seleccionar esta función y "Ejecutar") para crear
+// la planilla de claves de alumnos en Drive > Complex 180 > Alumnos. No es pública
+// (a diferencia de videos/planificación) porque tiene mails y claves — nadie la comparte.
+// Si ya existe, no la duplica: devuelve el link de la que hay.
+function crearHojaAlumnos() {
+  var alumnosFolder = subFolder(rootFolder(), "Alumnos");
+  if (!alumnosFolder) throw new Error('No existe la carpeta "Alumnos" dentro de Complex 180');
+
+  var NOMBRE = "Alumnos - claves";
+  var existentes = alumnosFolder.getFilesByName(NOMBRE);
+  if (existentes.hasNext()) {
+    var url = existentes.next().getUrl();
+    Logger.log("Ya existía: " + url);
+    return url;
+  }
+
+  var ss = SpreadsheetApp.create(NOMBRE);
+  var file = DriveApp.getFileById(ss.getId());
+  alumnosFolder.addFile(file);
+  DriveApp.getRootFolder().removeFile(file); // saca la copia que Drive deja en "Mi unidad"
+
+  var hoja = ss.getSheets()[0];
+  hoja.setName("Alumnos");
+  var encabezados = ["Nombre", "Email", "Clave", "Nivel", "Fecha de pago"];
+  hoja.getRange(1, 1, 1, encabezados.length).setValues([encabezados]).setFontWeight("bold");
+  hoja.setFrozenRows(1);
+  hoja.autoResizeColumns(1, encabezados.length);
+
+  Logger.log("Creada: " + ss.getUrl());
+  return ss.getUrl();
+}
