@@ -60,24 +60,23 @@ function getVideos() {
   return { ok: true, videos: videos };
 }
 
+var MESES_ES = ["Enero", "Febrero", "Marzo", "Abril", "Mayo", "Junio", "Julio", "Agosto", "Septiembre", "Octubre", "Noviembre", "Diciembre"];
+
+// Planificaciones/OPEN y /PRO tienen UN solo archivo "Planificacion OPEN|PRO" con
+// una hoja (tab) por mes (Enero..Diciembre) — no más subcarpetas por mes. Gaby edita
+// la hoja del mes que corresponda, o sube un Excel con esas mismas 12 hojas.
 function getPlan(nivel) {
   var vacio = { ok: true, nivel: nivel, mes: "", archivos: [], semanas: [] };
   var plan = subFolder(rootFolder(), "Planificaciones");
   var nivelFolder = plan ? subFolder(plan, nivel) : null;
   if (!nivelFolder) return vacio;
 
-  // la carpeta del mes arranca con "AAAA-MM" (ej. "2026-08 Agosto")
-  var prefijo = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), "yyyy-MM");
-  var mesFolder = null;
-  var carpetas = nivelFolder.getFolders();
-  while (carpetas.hasNext()) {
-    var c = carpetas.next();
-    if (c.getName().indexOf(prefijo) === 0) { mesFolder = c; break; }
-  }
-  if (!mesFolder) return vacio;
+  var hoy = new Date();
+  var mesNombre = MESES_ES[hoy.getMonth()];
+  var mesEtiqueta = Utilities.formatDate(hoy, Session.getScriptTimeZone(), "yyyy-MM") + " " + mesNombre;
 
   var archivos = [], manual = null, auto = null, xlsx = null;
-  var files = mesFolder.getFiles();
+  var files = nivelFolder.getFiles();
   while (files.hasNext()) {
     var f = files.next();
     var tipo = f.getMimeType();
@@ -92,23 +91,26 @@ function getPlan(nivel) {
   if (!manual && xlsx && (!auto || xlsx.getLastUpdated() > auto.getLastUpdated())) {
     if (auto) auto.setTrashed(true);
     var creado = Drive.Files.copy(
-      { name: "Planificacion (auto)", mimeType: MimeType.GOOGLE_SHEETS, parents: [mesFolder.getId()] },
+      { name: "Planificacion (auto)", mimeType: MimeType.GOOGLE_SHEETS, parents: [nivelFolder.getId()] },
       xlsx.getId()
     );
     auto = DriveApp.getFileById(creado.id);
   }
 
-  var hoja = manual || auto;
+  var libro = manual || auto;
   var semanas = [];
-  if (hoja) {
-    try { semanas = parsePlanificacion(hoja); } catch (err) { semanas = []; }
+  if (libro) {
+    try {
+      var hojaMes = SpreadsheetApp.open(libro).getSheetByName(mesNombre);
+      if (hojaMes) semanas = parsePlanificacion(hojaMes);
+    } catch (err) { semanas = []; }
   }
-  return { ok: true, nivel: nivel, mes: mesFolder.getName(), archivos: archivos, semanas: semanas };
+  return { ok: true, nivel: nivel, mes: mesEtiqueta, archivos: archivos, semanas: semanas };
 }
 
 // columnas fijas: Semana | Dia | Foco | Ejercicio | Series | Reps (fila 1 = encabezado)
-function parsePlanificacion(file) {
-  var values = SpreadsheetApp.open(file).getSheets()[0].getDataRange().getValues();
+function parsePlanificacion(hoja) {
+  var values = hoja.getDataRange().getValues();
   var semanas = [], porSemana = {};
   for (var i = 1; i < values.length; i++) {
     var r = values[i];
@@ -210,4 +212,71 @@ function crearHojaAlumnos() {
 
   Logger.log("Creada: " + ss.getUrl());
   return ss.getUrl();
+}
+
+// correr desde el editor si hace falta rearmar la estructura (idempotente: no duplica
+// nada si ya está armada). Deja en Planificaciones/OPEN y /PRO un solo archivo
+// "Planificacion OPEN"/"Planificacion PRO" con una hoja por mes (Enero..Diciembre,
+// encabezado Semana|Dia|Foco|Ejercicio|Series|Reps). Si encuentra carpetas viejas
+// de meses (formato "AAAA-MM ..." con una Hoja "Planificacion" adentro), migra esos
+// datos a la hoja del mes que corresponda y borra la carpeta vieja.
+function reorganizarPlanificaciones() {
+  var headers = ["Semana", "Dia", "Foco", "Ejercicio", "Series", "Reps"];
+  ["OPEN", "PRO"].forEach(function (nivel) {
+    var plan = subFolder(rootFolder(), "Planificaciones");
+    var nivelFolder = plan ? subFolder(plan, nivel) : null;
+    if (!nivelFolder) return;
+
+    var nombreArchivo = "Planificacion " + nivel;
+    var existentes = nivelFolder.getFilesByName(nombreArchivo);
+    var ss;
+    if (existentes.hasNext()) {
+      ss = SpreadsheetApp.open(existentes.next());
+    } else {
+      ss = SpreadsheetApp.create(nombreArchivo);
+      var file = DriveApp.getFileById(ss.getId());
+      nivelFolder.addFile(file);
+      DriveApp.getRootFolder().removeFile(file);
+    }
+
+    // la primera hoja que trae el archivo nuevo pasa a ser "Enero" en vez de quedar sin usar
+    var hojaInicial = ss.getSheets()[0];
+    if (MESES_ES.indexOf(hojaInicial.getName()) === -1) hojaInicial.setName(MESES_ES[0]);
+
+    MESES_ES.forEach(function (mes) {
+      var hoja = ss.getSheetByName(mes) || ss.insertSheet(mes);
+      if (String(hoja.getRange(1, 1).getValue()) !== "Semana") {
+        hoja.getRange(1, 1, 1, headers.length).setValues([headers]).setFontWeight("bold");
+        hoja.setFrozenRows(1);
+      }
+    });
+
+    // migrar las carpetas de mes viejas ("2026-08 Agosto", etc.) si quedaron de la versión anterior
+    var carpetas = nivelFolder.getFolders();
+    var aBorrar = [];
+    while (carpetas.hasNext()) {
+      var c = carpetas.next();
+      var m = /^(\d{4})-(\d{2})/.exec(c.getName());
+      if (!m) continue;
+      var mesNombre = MESES_ES[parseInt(m[2], 10) - 1];
+      if (!mesNombre) continue;
+
+      var archivosViejos = c.getFiles();
+      var origen = null;
+      while (archivosViejos.hasNext()) {
+        var f = archivosViejos.next();
+        if (f.getMimeType() === MimeType.GOOGLE_SHEETS) { origen = f; break; }
+      }
+      if (origen) {
+        var valores = SpreadsheetApp.open(origen).getSheets()[0].getDataRange().getValues();
+        if (valores.length > 1) {
+          var destino = ss.getSheetByName(mesNombre);
+          destino.getRange(2, 1, valores.length - 1, valores[0].length).setValues(valores.slice(1));
+        }
+      }
+      aBorrar.push(c);
+    }
+    aBorrar.forEach(function (c) { c.setTrashed(true); });
+  });
+  return "listo";
 }
