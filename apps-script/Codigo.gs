@@ -11,6 +11,7 @@ function doGet(e) {
   try {
     if (action === "videos") out = getVideos();
     else if (action === "plan") out = getPlan(String((e.parameter.nivel || "OPEN")).toUpperCase());
+    else if (action === "login") out = getAlumnoLogin(e.parameter.email, e.parameter.clave);
     else out = { ok: false, error: "accion desconocida" };
   } catch (err) {
     out = { ok: false, error: String(err) };
@@ -129,6 +130,29 @@ function parsePlanificacion(file) {
 function test() {
   Logger.log(JSON.stringify(getVideos()));
   Logger.log(JSON.stringify(getPlan("OPEN")));
+}
+
+// valida mail + clave contra Drive > Complex 180 > Alumnos > "Alumnos - claves"
+// (columnas Nombre | Email | Clave | Nivel | Fecha de pago). Lucas carga una fila
+// por alumno cuando paga; esta función es lo único que lee esa planilla.
+function getAlumnoLogin(email, clave) {
+  var alumnosFolder = subFolder(rootFolder(), "Alumnos");
+  var archivos = alumnosFolder ? alumnosFolder.getFilesByName("Alumnos - claves") : null;
+  if (!archivos || !archivos.hasNext()) return { ok: false, error: "no configurado" };
+
+  var emailNorm = String(email || "").trim().toLowerCase();
+  var claveNorm = String(clave || "").trim();
+  if (!emailNorm || !claveNorm) return { ok: false, error: "faltan datos" };
+
+  var values = SpreadsheetApp.open(archivos.next()).getSheets()[0].getDataRange().getValues();
+  for (var i = 1; i < values.length; i++) {
+    var r = values[i];
+    if (String(r[1] || "").trim().toLowerCase() !== emailNorm) continue;
+    if (String(r[2] || "").trim() !== claveNorm) return { ok: false, error: "clave incorrecta" };
+    var nivel = String(r[3] || "").trim().toUpperCase();
+    return { ok: true, nombre: String(r[0] || "").trim(), nivel: (nivel === "OPEN" || nivel === "PRO") ? nivel : "" };
+  }
+  return { ok: false, error: "mail no encontrado" };
 }
 
 // correr UNA VEZ desde el editor (seleccionar esta función y "Ejecutar") para crear

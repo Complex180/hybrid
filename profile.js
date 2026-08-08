@@ -79,19 +79,34 @@
     ["view-clave", "view-form", "view-nivel", "view-dashboard"].forEach(function (v) { $("#" + v).hidden = (v !== id); });
   }
 
-  // ---- Clave de acceso (la da Gaby) — se pide una sola vez, antes de completar el perfil ----
+  // ---- Acceso alumnos (mail + clave) — se valida contra la planilla de alumnos en Drive ----
   function initClave() {
     var form = $("[data-clave-form]");
     if (!form) return;
     form.addEventListener("submit", function (e) {
       e.preventDefault();
-      var clave = (window.__BRAND__ || {}).claveAlumnos || "";
-      if (clave && form.elements.clave.value.trim().toUpperCase() === String(clave).toUpperCase()) {
-        localStorage.setItem(KEYS.unlocked, "1");
-        showView("view-form");
-      } else {
-        $("[data-clave-msg]").textContent = "Clave incorrecta. Fijate con Gaby.";
-      }
+      var email = form.elements.email.value.trim();
+      var clave = form.elements.clave.value.trim();
+      var msg = $("[data-clave-msg]");
+      var btn = form.querySelector("button[type=submit]");
+      msg.textContent = "Verificando…";
+      btn.disabled = true;
+      fetch(API_URL + "?action=login&email=" + encodeURIComponent(email) + "&clave=" + encodeURIComponent(clave))
+        .then(function (r) { return r.json(); })
+        .then(function (data) {
+          btn.disabled = false;
+          if (data.ok) {
+            localStorage.setItem(KEYS.unlocked, "1");
+            if (data.nivel === "OPEN" || data.nivel === "PRO") setJSON(KEYS.nivel, data.nivel);
+            showView("view-form");
+          } else {
+            msg.textContent = "Mail o clave incorrectos. Fijate con Gaby.";
+          }
+        })
+        .catch(function () {
+          btn.disabled = false;
+          msg.textContent = "No se pudo verificar. Probá de nuevo en un rato.";
+        });
     });
   }
 
