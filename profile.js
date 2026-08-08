@@ -2,6 +2,8 @@
   "use strict";
   // ponytail: data de muestra fija, misma rutina las 4 semanas — reemplazar por Sheets/Drive en la etapa 2.
 
+  var API_URL = "https://script.google.com/macros/s/AKfycby9c2jdl19l7tZBwxHG8Dpw6fz_bT_Chhc_WEydQAW1tiFPYtulxbaAk-MmYtMWlexrTw/exec";
+
   var DIAS_BASE = {
     OPEN: [
       { dia: "Día 1", foco: "Fuerza tren superior", ejercicios: [
@@ -186,21 +188,43 @@
     });
   }
 
-  // ---- Videos ----
+  // ---- Videos (lee la carpeta "Videos ejercicios" del Drive vía Apps Script) ----
+  var videosCache = EJERCICIOS; // arranca con la lista de muestra hasta que llegue la real
+
   function renderVideoList(filter) {
     var f = (filter || "").toLowerCase();
-    var items = EJERCICIOS.filter(function (e) {
+    var items = videosCache.filter(function (e) {
       return !f || e.nombre.toLowerCase().indexOf(f) > -1 || e.grupo.toLowerCase().indexOf(f) > -1;
     });
     $("[data-video-list]").innerHTML = items.map(function (e) {
-      return '<div class="video-item"><div><strong>' + e.nombre + '</strong><br><small>' + e.grupo + '</small></div>' +
-        '<span class="video-badge">▶ próximamente</span></div>';
+      var accion = e.url
+        ? '<a class="video-badge" href="' + e.url + '" target="_blank" rel="noopener">▶ Ver video</a>'
+        : '<span class="video-badge">▶ próximamente</span>';
+      return '<div class="video-item"><div><strong>' + e.nombre + '</strong><br><small>' + e.grupo + '</small></div>' + accion + '</div>';
     }).join("") || '<p style="color:var(--mute);">No encontramos ejercicios con ese nombre.</p>';
   }
 
   function initVideos() {
     renderVideoList("");
     $("[data-video-search]").addEventListener("input", function (e) { renderVideoList(e.target.value); });
+    fetch(API_URL + "?action=videos").then(function (r) { return r.json(); }).then(function (data) {
+      if (data.ok && data.videos.length) {
+        videosCache = data.videos;
+        renderVideoList($("[data-video-search]").value);
+      }
+    }).catch(function () { /* sin conexión: se queda con la lista de muestra */ });
+  }
+
+  // ---- Archivo de planificación subido por el coach este mes ----
+  function renderPlanArchivo(nivel) {
+    var box = $("[data-plan-archivo]");
+    if (!box) return;
+    fetch(API_URL + "?action=plan&nivel=" + nivel).then(function (r) { return r.json(); }).then(function (data) {
+      if (!data.ok || !data.archivos.length) { box.hidden = true; return; }
+      box.hidden = false;
+      box.innerHTML = "Tu coach subió la planificación de " + data.mes.split(" ")[1] + ": " +
+        data.archivos.map(function (a) { return '<a href="' + a.url + '" target="_blank" rel="noopener">' + a.nombre + '</a>'; }).join(", ");
+    }).catch(function () { box.hidden = true; });
   }
 
   // ---- Dashboard boot ----
@@ -211,6 +235,7 @@
     $("[data-plan-meta]").textContent = "Nivel " + nivel + (profile.ciudad ? " · " + profile.ciudad : "");
     renderWeekly(nivel);
     renderMonthly(nivel);
+    renderPlanArchivo(nivel);
     $("[data-monthly-view]").hidden = true;
     $("[data-toggle-monthly]").textContent = "Ver planificación mensual";
   }
