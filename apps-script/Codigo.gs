@@ -12,7 +12,6 @@ function doGet(e) {
     if (action === "videos") out = getVideos();
     else if (action === "plan") out = getPlan(String((e.parameter.nivel || "OPEN")).toUpperCase());
     else if (action === "login") out = getAlumnoLogin(e.parameter.email, e.parameter.clave);
-    else if (action === "_qacols") out = { ok: true, resultado: crearHojaAlumnos() };
     else out = { ok: false, error: "accion desconocida" };
   } catch (err) {
     out = { ok: false, error: String(err) };
@@ -193,12 +192,26 @@ function getAlumnoLogin(email, clave) {
   return { ok: false, error: "mail no encontrado" };
 }
 
-// "Fecha de pago" puede llegar como Date (si Sheets la detectó como fecha) o como texto
+// "Fecha de pago" puede llegar como Date (si Sheets la detectó como fecha) o como texto.
+// Si es texto "dd/mm/aaaa" hay que parsearlo a mano: new Date(string) interpreta
+// mm/dd/aaaa (formato EEUU), así que con día > 12 tira Invalid Date o, peor,
+// calcula una fecha equivocada sin avisar (ej. "05/08/2026" leído como 8 de mayo).
 function parseFecha(valor) {
   if (valor instanceof Date && !isNaN(valor)) return valor;
   if (!valor) return null;
-  var d = new Date(String(valor).trim());
-  return isNaN(d) ? null : d;
+  var s = String(valor).trim();
+  var m = /^(\d{1,2})[\/-](\d{1,2})[\/-](\d{4})$/.exec(s); // dd/mm/aaaa o dd-mm-aaaa
+  if (m) {
+    var d1 = new Date(Number(m[3]), Number(m[2]) - 1, Number(m[1]));
+    return isNaN(d1) ? null : d1;
+  }
+  m = /^(\d{4})-(\d{1,2})-(\d{1,2})$/.exec(s); // aaaa-mm-dd (ISO, sin ambigüedad)
+  if (m) {
+    var d2 = new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
+    return isNaN(d2) ? null : d2;
+  }
+  var d3 = new Date(s);
+  return isNaN(d3) ? null : d3;
 }
 
 function parseJSONSeguro(valor) {

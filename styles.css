@@ -261,14 +261,6 @@ ul { list-style: none; }
   position: relative;
 }
 .modal-close { position: absolute; top: 1rem; right: 1rem; font-family: var(--mono); font-size: 1rem; }
-.modal-box h3 { font-size: 1.5rem; }
-.modal-box p { margin-top: .75rem; color: var(--ink-soft); font-size: .92rem; }
-.modal-box input {
-  width: 100%; margin-top: 1.25rem; padding: .85rem 1rem; border: 2px solid var(--ink);
-  font-family: var(--mono); font-size: .95rem;
-}
-.modal-box input:focus { outline: none; border-color: var(--accent); }
-.modal-msg { margin-top: 1rem; font-family: var(--mono); font-size: .82rem; color: var(--accent); min-height: 1.2em; }
 
 /* =============================================================
    9b. Profile form (perfil.html)
