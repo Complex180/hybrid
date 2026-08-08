@@ -132,9 +132,15 @@ function test() {
   Logger.log(JSON.stringify(getPlan("OPEN")));
 }
 
+var UN_MES_MS = 30 * 24 * 60 * 60 * 1000; // 30 días ≈ 1 mes de validez — sin líos de meses de 28/30/31 días
+
 // valida mail + clave contra Drive > Complex 180 > Alumnos > "Alumnos - claves"
 // (columnas Nombre | Email | Clave | Nivel | Fecha de pago). Lucas carga una fila
 // por alumno cuando paga; esta función es lo único que lee esa planilla.
+// El pago habilita LOS DOS planes por 1 mes desde "Fecha de pago" — "Nivel" ya no
+// restringe el acceso, solo decide qué plan se muestra primero en el dashboard.
+// Cuando el alumno vuelve a pagar, Lucas solo actualiza "Fecha de pago" y el
+// vencimiento se recalcula solo, sin tocar nada más.
 function getAlumnoLogin(email, clave) {
   var alumnosFolder = subFolder(rootFolder(), "Alumnos");
   var archivos = alumnosFolder ? alumnosFolder.getFilesByName("Alumnos - claves") : null;
@@ -149,10 +155,29 @@ function getAlumnoLogin(email, clave) {
     var r = values[i];
     if (String(r[1] || "").trim().toLowerCase() !== emailNorm) continue;
     if (String(r[2] || "").trim() !== claveNorm) return { ok: false, error: "clave incorrecta" };
+
+    var fechaPago = parseFecha(r[4]);
+    if (!fechaPago) return { ok: false, error: "sin fecha de pago registrada" };
+    var vencimiento = new Date(fechaPago.getTime() + UN_MES_MS);
+    if (new Date() > vencimiento) return { ok: false, error: "vencido" };
+
     var nivel = String(r[3] || "").trim().toUpperCase();
-    return { ok: true, nombre: String(r[0] || "").trim(), nivel: (nivel === "OPEN" || nivel === "PRO") ? nivel : "" };
+    return {
+      ok: true,
+      nombre: String(r[0] || "").trim(),
+      nivel: (nivel === "OPEN" || nivel === "PRO") ? nivel : "",
+      vencimiento: vencimiento.toISOString()
+    };
   }
   return { ok: false, error: "mail no encontrado" };
+}
+
+// "Fecha de pago" puede llegar como Date (si Sheets la detectó como fecha) o como texto
+function parseFecha(valor) {
+  if (valor instanceof Date && !isNaN(valor)) return valor;
+  if (!valor) return null;
+  var d = new Date(String(valor).trim());
+  return isNaN(d) ? null : d;
 }
 
 // correr UNA VEZ desde el editor (seleccionar esta función y "Ejecutar") para crear

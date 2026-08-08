@@ -57,7 +57,7 @@
     { nombre: "Circuito funcional", grupo: "Resistencia" }, { nombre: "Movilidad general", grupo: "Movilidad" }
   ];
 
-  var KEYS = { profile: "complex180_profile", nivel: "complex180_nivel", log: "complex180_log", unlocked: "complex180_unlocked" };
+  var KEYS = { profile: "complex180_profile", nivel: "complex180_nivel", log: "complex180_log", vencimiento: "complex180_vencimiento" };
   var $ = function (sel, scope) { return (scope || document).querySelector(sel); };
   var $$ = function (sel, scope) { return Array.from((scope || document).querySelectorAll(sel)); };
 
@@ -76,7 +76,14 @@
   }
 
   function showView(id) {
-    ["view-clave", "view-form", "view-nivel", "view-dashboard"].forEach(function (v) { $("#" + v).hidden = (v !== id); });
+    ["view-clave", "view-form", "view-dashboard"].forEach(function (v) { $("#" + v).hidden = (v !== id); });
+  }
+
+  // el pago habilita los DOS planes (OPEN y PRO) por 1 mes — el vencimiento lo calcula
+  // el Apps Script a partir de "Fecha de pago" y viaja en la respuesta del login
+  function vigente() {
+    var v = localStorage.getItem(KEYS.vencimiento);
+    return !!v && new Date(v) > new Date();
   }
 
   // ---- Acceso alumnos (mail + clave) — se valida contra la planilla de alumnos en Drive ----
@@ -96,9 +103,12 @@
         .then(function (data) {
           btn.disabled = false;
           if (data.ok) {
-            localStorage.setItem(KEYS.unlocked, "1");
+            localStorage.setItem(KEYS.vencimiento, data.vencimiento);
             if (data.nivel === "OPEN" || data.nivel === "PRO") setJSON(KEYS.nivel, data.nivel);
-            showView("view-form");
+            if (getJSON(KEYS.profile)) { renderDashboard(); showView("view-dashboard"); }
+            else { showView("view-form"); }
+          } else if (data.error === "vencido") {
+            msg.textContent = "Tu acceso venció. Pagá de nuevo y Gaby te lo renueva.";
           } else {
             msg.textContent = "Mail o clave incorrectos. Fijate con Gaby.";
           }
@@ -146,19 +156,8 @@
       fd.forEach(function (v, k) { if (!(v instanceof File)) profile[k] = v; });
       // ponytail: fotos solo se leen en memoria del navegador, no se guardan — subida real en etapa 2.
       setJSON(KEYS.profile, profile);
-      if (getJSON(KEYS.nivel)) { renderDashboard(); showView("view-dashboard"); }
-      else { showView("view-nivel"); }
-    });
-  }
-
-  // ---- Paso 2: nivel ----
-  function initNivel() {
-    $$("[data-choose-nivel]").forEach(function (btn) {
-      btn.addEventListener("click", function () {
-        setJSON(KEYS.nivel, btn.dataset.chooseNivel);
-        renderDashboard();
-        showView("view-dashboard");
-      });
+      renderDashboard();
+      showView("view-dashboard");
     });
   }
 
@@ -345,10 +344,11 @@
     }).catch(function () { var box = $("[data-plan-archivo]"); if (box) box.hidden = true; });
   }
 
-  // ---- Dashboard boot ----
-  function renderDashboard() {
+  // ---- Dashboard: el pago habilita los dos planes, este toggle cambia cuál se ve ----
+  function setNivelActivo(nivel) {
+    setJSON(KEYS.nivel, nivel);
+    $$("[data-toggle-nivel]").forEach(function (b) { b.classList.toggle("is-active", b.dataset.toggleNivel === nivel); });
     var profile = getJSON(KEYS.profile) || {};
-    var nivel = getJSON(KEYS.nivel) || "OPEN";
     $("[data-plan-nombre]").textContent = (profile.nombre || "") + " " + (profile.apellido || "");
     $("[data-plan-meta]").textContent = "Nivel " + nivel + (profile.ciudad ? " · " + profile.ciudad : "");
     renderWeekly(nivel);
@@ -358,11 +358,21 @@
     fetchPlan(nivel);
   }
 
+  function initNivelToggle() {
+    $$("[data-toggle-nivel]").forEach(function (btn) {
+      btn.addEventListener("click", function () { setNivelActivo(btn.dataset.toggleNivel); });
+    });
+  }
+
+  function renderDashboard() {
+    setNivelActivo(getJSON(KEYS.nivel) || "OPEN");
+  }
+
   function boot() {
     initClave();
     initForm();
-    initNivel();
     initDashToolbar();
+    initNivelToggle();
     initVideos();
 
     var fab = $("[data-whatsapp-fab]");
@@ -371,12 +381,8 @@
       fab.href = "https://wa.me/" + brand.whatsapp + "?text=" + encodeURIComponent(brand.whatsappText || "Hola");
     }
 
-    var profile = getJSON(KEYS.profile);
-    var nivel = getJSON(KEYS.nivel);
-    var desbloqueado = localStorage.getItem(KEYS.unlocked) === "1";
-    if (!profile && !desbloqueado) { showView("view-clave"); return; }
-    if (!profile) { showView("view-form"); return; }
-    if (!nivel) { showView("view-nivel"); return; }
+    if (!vigente()) { showView("view-clave"); return; }
+    if (!getJSON(KEYS.profile)) { showView("view-form"); return; }
     renderDashboard();
     showView("view-dashboard");
   }
