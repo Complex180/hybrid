@@ -95,8 +95,8 @@ ul { list-style: none; }
   position: sticky; top: 0; z-index: 100;
   display: flex; align-items: center; justify-content: space-between;
   padding: .9rem 1.25rem;
-  background: var(--accent-2); color: #fff;
-  border-bottom: 2px solid var(--ink);
+  background: var(--ink); color: #fff;
+  border-bottom: 2px solid var(--accent-2);
 }
 .nav-brand { display: flex; align-items: center; gap: .6rem; }
 .nav-brand img { height: 38px; width: auto; background: #fff; padding: .3rem .55rem; border-radius: 4px; }
@@ -110,7 +110,7 @@ ul { list-style: none; }
 .nav-actions { display: flex; align-items: center; gap: .6rem; }
 .nav-actions .btn { padding: .65rem 1.1rem; font-size: .78rem; }
 .nav-actions .btn-ghost { color: #fff; border-color: #fff; }
-.nav-actions .btn-ghost:hover { background: #fff; color: var(--accent-2); }
+.nav-actions .btn-ghost:hover { background: #fff; color: var(--ink); }
 
 @media (min-width: 960px) { .nav-links { display: flex; } }
 
