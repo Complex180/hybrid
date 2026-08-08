@@ -12,6 +12,21 @@ function doGet(e) {
     if (action === "videos") out = getVideos();
     else if (action === "plan") out = getPlan(String((e.parameter.nivel || "OPEN")).toUpperCase());
     else if (action === "login") out = getAlumnoLogin(e.parameter.email, e.parameter.clave);
+    else if (action === "_qacols") out = { ok: true, resultado: crearHojaAlumnos() };
+    else out = { ok: false, error: "accion desconocida" };
+  } catch (err) {
+    out = { ok: false, error: String(err) };
+  }
+  return ContentService.createTextOutput(JSON.stringify(out)).setMimeType(ContentService.MimeType.JSON);
+}
+
+// guardarDatos: el único caso de escritura. e.parameter viaja igual que en doGet
+// cuando el POST llega form-urlencoded (así lo manda profile.js con URLSearchParams).
+function doPost(e) {
+  var action = (e && e.parameter && e.parameter.action) || "";
+  var out;
+  try {
+    if (action === "guardarDatos") out = guardarDatosAlumno(e.parameter.email, e.parameter.clave, e.parameter.perfil, e.parameter.registros);
     else out = { ok: false, error: "accion desconocida" };
   } catch (err) {
     out = { ok: false, error: String(err) };
@@ -137,12 +152,14 @@ function test() {
 var UN_MES_MS = 30 * 24 * 60 * 60 * 1000; // 30 días ≈ 1 mes de validez — sin líos de meses de 28/30/31 días
 
 // valida mail + clave contra Drive > Complex 180 > Alumnos > "Alumnos - claves"
-// (columnas Nombre | Email | Clave | Nivel | Fecha de pago). Lucas carga una fila
-// por alumno cuando paga; esta función es lo único que lee esa planilla.
+// (columnas Nombre | Email | Clave | Nivel | Fecha de pago | Perfil (JSON) | Registros (JSON)).
+// Lucas carga una fila por alumno cuando paga; esta función es lo único que lee esa planilla.
 // El pago habilita LOS DOS planes por 1 mes desde "Fecha de pago" — "Nivel" ya no
 // restringe el acceso, solo decide qué plan se muestra primero en el dashboard.
 // Cuando el alumno vuelve a pagar, Lucas solo actualiza "Fecha de pago" y el
-// vencimiento se recalcula solo, sin tocar nada más.
+// vencimiento se recalcula solo, sin tocar nada más. Devuelve también el perfil y
+// "mis registros" guardados la última vez (en cualquier dispositivo) para que el
+// alumno no tenga que completar todo de nuevo si entra desde otro celular.
 function getAlumnoLogin(email, clave) {
   var alumnosFolder = subFolder(rootFolder(), "Alumnos");
   var archivos = alumnosFolder ? alumnosFolder.getFilesByName("Alumnos - claves") : null;
@@ -168,7 +185,9 @@ function getAlumnoLogin(email, clave) {
       ok: true,
       nombre: String(r[0] || "").trim(),
       nivel: (nivel === "OPEN" || nivel === "PRO") ? nivel : "",
-      vencimiento: vencimiento.toISOString()
+      vencimiento: vencimiento.toISOString(),
+      perfil: parseJSONSeguro(r[5]),
+      registros: parseJSONSeguro(r[6])
     };
   }
   return { ok: false, error: "mail no encontrado" };
@@ -182,35 +201,70 @@ function parseFecha(valor) {
   return isNaN(d) ? null : d;
 }
 
-// correr UNA VEZ desde el editor (seleccionar esta función y "Ejecutar") para crear
-// la planilla de claves de alumnos en Drive > Complex 180 > Alumnos. No es pública
-// (a diferencia de videos/planificación) porque tiene mails y claves — nadie la comparte.
-// Si ya existe, no la duplica: devuelve el link de la que hay.
+function parseJSONSeguro(valor) {
+  if (!valor) return null;
+  try { return JSON.parse(String(valor)); } catch (err) { return null; }
+}
+
+// guarda el perfil y/o "mis registros" del alumno en su fila de "Alumnos - claves"
+// (columnas F y G) — así viajan con el mail del alumno a cualquier dispositivo.
+// Solo escribe si mail+clave matchean (misma validación que el login).
+function guardarDatosAlumno(email, clave, perfilJson, registrosJson) {
+  var alumnosFolder = subFolder(rootFolder(), "Alumnos");
+  var archivos = alumnosFolder ? alumnosFolder.getFilesByName("Alumnos - claves") : null;
+  if (!archivos || !archivos.hasNext()) return { ok: false, error: "no configurado" };
+
+  var emailNorm = String(email || "").trim().toLowerCase();
+  var claveNorm = String(clave || "").trim();
+  if (!emailNorm || !claveNorm) return { ok: false, error: "faltan datos" };
+
+  var hoja = SpreadsheetApp.open(archivos.next()).getSheets()[0];
+  var values = hoja.getDataRange().getValues();
+  for (var i = 1; i < values.length; i++) {
+    var r = values[i];
+    if (String(r[1] || "").trim().toLowerCase() !== emailNorm) continue;
+    if (String(r[2] || "").trim() !== claveNorm) return { ok: false, error: "clave incorrecta" };
+
+    var fila = i + 1;
+    if (perfilJson != null) hoja.getRange(fila, 6).setValue(perfilJson);
+    if (registrosJson != null) hoja.getRange(fila, 7).setValue(registrosJson);
+    return { ok: true };
+  }
+  return { ok: false, error: "mail no encontrado" };
+}
+
+// correr desde el editor si hace falta (crea la planilla si no existe, o le agrega
+// las columnas Perfil/Registros si ya existía de una versión anterior — idempotente,
+// no pisa filas con datos). Drive > Complex 180 > Alumnos > "Alumnos - claves". No es
+// pública (a diferencia de videos/planificación) porque tiene mails y claves.
 function crearHojaAlumnos() {
   var alumnosFolder = subFolder(rootFolder(), "Alumnos");
   if (!alumnosFolder) throw new Error('No existe la carpeta "Alumnos" dentro de Complex 180');
 
   var NOMBRE = "Alumnos - claves";
+  var encabezados = ["Nombre", "Email", "Clave", "Nivel", "Fecha de pago", "Perfil (JSON)", "Registros (JSON)"];
   var existentes = alumnosFolder.getFilesByName(NOMBRE);
+  var ss;
   if (existentes.hasNext()) {
-    var url = existentes.next().getUrl();
-    Logger.log("Ya existía: " + url);
-    return url;
+    ss = SpreadsheetApp.open(existentes.next());
+  } else {
+    ss = SpreadsheetApp.create(NOMBRE);
+    var file = DriveApp.getFileById(ss.getId());
+    alumnosFolder.addFile(file);
+    DriveApp.getRootFolder().removeFile(file); // saca la copia que Drive deja en "Mi unidad"
+    ss.getSheets()[0].setName("Alumnos");
   }
 
-  var ss = SpreadsheetApp.create(NOMBRE);
-  var file = DriveApp.getFileById(ss.getId());
-  alumnosFolder.addFile(file);
-  DriveApp.getRootFolder().removeFile(file); // saca la copia que Drive deja en "Mi unidad"
-
   var hoja = ss.getSheets()[0];
-  hoja.setName("Alumnos");
-  var encabezados = ["Nombre", "Email", "Clave", "Nivel", "Fecha de pago"];
-  hoja.getRange(1, 1, 1, encabezados.length).setValues([encabezados]).setFontWeight("bold");
-  hoja.setFrozenRows(1);
-  hoja.autoResizeColumns(1, encabezados.length);
+  var actuales = hoja.getRange(1, 1, 1, encabezados.length).getValues()[0];
+  var faltaAlguno = encabezados.some(function (h, i) { return actuales[i] !== h; });
+  if (faltaAlguno) {
+    hoja.getRange(1, 1, 1, encabezados.length).setValues([encabezados]).setFontWeight("bold");
+    hoja.setFrozenRows(1);
+    hoja.autoResizeColumns(1, encabezados.length);
+  }
 
-  Logger.log("Creada: " + ss.getUrl());
+  Logger.log(ss.getUrl());
   return ss.getUrl();
 }
 

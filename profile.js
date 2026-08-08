@@ -57,7 +57,10 @@
     { nombre: "Circuito funcional", grupo: "Resistencia" }, { nombre: "Movilidad general", grupo: "Movilidad" }
   ];
 
-  var KEYS = { profile: "complex180_profile", nivel: "complex180_nivel", log: "complex180_log", vencimiento: "complex180_vencimiento" };
+  var KEYS = {
+    profile: "complex180_profile", nivel: "complex180_nivel", log: "complex180_log",
+    vencimiento: "complex180_vencimiento", email: "complex180_email", clave: "complex180_clave"
+  };
   var $ = function (sel, scope) { return (scope || document).querySelector(sel); };
   var $$ = function (sel, scope) { return Array.from((scope || document).querySelectorAll(sel)); };
 
@@ -86,6 +89,28 @@
     return !!v && new Date(v) > new Date();
   }
 
+  function debounce(fn, ms) {
+    var t;
+    return function () {
+      var args = arguments;
+      clearTimeout(t);
+      t = setTimeout(function () { fn.apply(null, args); }, ms);
+    };
+  }
+
+  // manda el perfil y/o "mis registros" al servidor para que viajen con el alumno
+  // a cualquier dispositivo — usa el mail+clave guardados al loguearse.
+  function guardarEnServidor(datos) {
+    var email = localStorage.getItem(KEYS.email);
+    var clave = localStorage.getItem(KEYS.clave);
+    if (!email || !clave) return;
+    var body = new URLSearchParams({ action: "guardarDatos", email: email, clave: clave });
+    if (datos.perfil) body.set("perfil", JSON.stringify(datos.perfil));
+    if (datos.registros) body.set("registros", JSON.stringify(datos.registros));
+    fetch(API_URL, { method: "POST", body: body }).catch(function () { /* sin conexión: queda solo local por ahora */ });
+  }
+  var guardarRegistrosServidor = debounce(function (log) { guardarEnServidor({ registros: log }); }, 900);
+
   // ---- Acceso alumnos (mail + clave) — se valida contra la planilla de alumnos en Drive ----
   function initClave() {
     var form = $("[data-clave-form]");
@@ -104,7 +129,12 @@
           btn.disabled = false;
           if (data.ok) {
             localStorage.setItem(KEYS.vencimiento, data.vencimiento);
+            localStorage.setItem(KEYS.email, email);
+            localStorage.setItem(KEYS.clave, clave);
             if (data.nivel === "OPEN" || data.nivel === "PRO") setJSON(KEYS.nivel, data.nivel);
+            // el servidor manda el perfil/registros guardados la última vez (en cualquier dispositivo)
+            if (data.perfil) setJSON(KEYS.profile, data.perfil);
+            if (data.registros) setJSON(KEYS.log, data.registros);
             if (getJSON(KEYS.profile)) { renderDashboard(); showView("view-dashboard"); }
             else { showView("view-form"); }
           } else if (data.error === "vencido") {
@@ -156,6 +186,7 @@
       fd.forEach(function (v, k) { if (!(v instanceof File)) profile[k] = v; });
       // ponytail: fotos solo se leen en memoria del navegador, no se guardan — subida real en etapa 2.
       setJSON(KEYS.profile, profile);
+      guardarEnServidor({ perfil: profile });
       renderDashboard();
       showView("view-dashboard");
     });
@@ -240,6 +271,7 @@
         log[key] = log[key] || {};
         log[key][input.dataset.field] = input.value;
         setJSON(KEYS.log, log);
+        guardarRegistrosServidor(log);
       });
     });
   }
