@@ -57,7 +57,7 @@
     { nombre: "Circuito funcional", grupo: "Resistencia" }, { nombre: "Movilidad general", grupo: "Movilidad" }
   ];
 
-  var KEYS = { profile: "complex180_profile", nivel: "complex180_nivel", log: "complex180_log" };
+  var KEYS = { profile: "complex180_profile", nivel: "complex180_nivel", log: "complex180_log", unlocked: "complex180_unlocked" };
   var $ = function (sel, scope) { return (scope || document).querySelector(sel); };
   var $$ = function (sel, scope) { return Array.from((scope || document).querySelectorAll(sel)); };
 
@@ -76,7 +76,23 @@
   }
 
   function showView(id) {
-    ["view-form", "view-nivel", "view-dashboard"].forEach(function (v) { $("#" + v).hidden = (v !== id); });
+    ["view-clave", "view-form", "view-nivel", "view-dashboard"].forEach(function (v) { $("#" + v).hidden = (v !== id); });
+  }
+
+  // ---- Clave de acceso (la da Gaby) — se pide una sola vez, antes de completar el perfil ----
+  function initClave() {
+    var form = $("[data-clave-form]");
+    if (!form) return;
+    form.addEventListener("submit", function (e) {
+      e.preventDefault();
+      var clave = (window.__BRAND__ || {}).claveAlumnos || "";
+      if (clave && form.elements.clave.value.trim().toUpperCase() === String(clave).toUpperCase()) {
+        localStorage.setItem(KEYS.unlocked, "1");
+        showView("view-form");
+      } else {
+        $("[data-clave-msg]").textContent = "Clave incorrecta. Fijate con Gaby.";
+      }
+    });
   }
 
   // ---- Planificación real (planilla de Drive) con la de muestra como respaldo ----
@@ -328,6 +344,7 @@
   }
 
   function boot() {
+    initClave();
     initForm();
     initNivel();
     initDashToolbar();
@@ -341,6 +358,8 @@
 
     var profile = getJSON(KEYS.profile);
     var nivel = getJSON(KEYS.nivel);
+    var desbloqueado = localStorage.getItem(KEYS.unlocked) === "1";
+    if (!profile && !desbloqueado) { showView("view-clave"); return; }
     if (!profile) { showView("view-form"); return; }
     if (!nivel) { showView("view-nivel"); return; }
     renderDashboard();

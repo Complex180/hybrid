@@ -7,7 +7,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;600;700&display=swap">
-<link rel="stylesheet" href="styles.css?v=20260808">
+<link rel="stylesheet" href="styles.css?v=20260809">
 </head>
 <body>
 <a href="#main" class="skip-link">Saltar al contenido</a>
@@ -22,6 +22,17 @@
 </header>
 
 <main id="main">
+
+  <section id="view-clave" class="section" style="max-width:560px;" hidden>
+    <p class="kicker">Acceso alumnos</p>
+    <h1 class="section-title">Ingresá tu clave</h1>
+    <p style="color:var(--ink-soft); margin-top:.5rem; max-width:60ch;">Gaby te la pasó por WhatsApp. La necesitás una sola vez para completar tu perfil.</p>
+    <form data-clave-form style="margin-top:2rem; display:flex; flex-direction:column; gap:1rem; max-width:340px;">
+      <input type="password" name="clave" placeholder="Tu clave" required autocomplete="off" style="border:2px solid var(--ink); padding:.85rem 1rem; font-family:var(--mono); font-size:.95rem;">
+      <button type="submit" class="btn btn-primary">Ingresar</button>
+    </form>
+    <p data-clave-msg style="margin-top:1rem; font-family:var(--mono); font-size:.82rem; color:var(--accent); min-height:1.2em;"></p>
+  </section>
 
   <section id="view-form" class="section" style="max-width:920px;">
     <p class="kicker">Paso 1 · Datos personales</p>
@@ -161,6 +172,6 @@
 </footer>
 
 <script defer src="lib/manifest.js"></script>
-<script defer src="profile.js?v=20260808"></script>
+<script defer src="profile.js?v=20260809"></script>
 </body>
 </html>

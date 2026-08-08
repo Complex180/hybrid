@@ -95,20 +95,22 @@ ul { list-style: none; }
   position: sticky; top: 0; z-index: 100;
   display: flex; align-items: center; justify-content: space-between;
   padding: .9rem 1.25rem;
-  background: rgba(255,255,255,.92); backdrop-filter: blur(8px);
-  border-bottom: 1px solid var(--line);
+  background: var(--accent); color: #fff;
+  border-bottom: 2px solid var(--accent-2);
 }
 .nav-brand { display: flex; align-items: center; gap: .6rem; }
-.nav-brand img { height: 38px; width: auto; }
+.nav-brand img { height: 38px; width: auto; background: #fff; padding: .3rem .55rem; border-radius: 4px; }
 .nav-links { display: none; gap: 1.75rem; align-items: center; font-family: var(--mono); font-size: .82rem; text-transform: uppercase; letter-spacing: .04em; }
 .nav-links a { position: relative; padding-bottom: 4px; }
 .nav-links a::after {
-  content: ""; position: absolute; left: 0; right: 100%; bottom: 0; height: 2px; background: var(--accent);
+  content: ""; position: absolute; left: 0; right: 100%; bottom: 0; height: 2px; background: #fff;
   transition: right .3s var(--ease-out);
 }
 .nav-links a:hover::after { right: 0; }
 .nav-actions { display: flex; align-items: center; gap: .6rem; }
 .nav-actions .btn { padding: .65rem 1.1rem; font-size: .78rem; }
+.nav-actions .btn-ghost { color: #fff; border-color: #fff; }
+.nav-actions .btn-ghost:hover { background: #fff; color: var(--accent); }
 
 @media (min-width: 960px) { .nav-links { display: flex; } }
 
@@ -245,15 +247,6 @@ ul { list-style: none; }
 .footer-brand { font-family: var(--mono); font-size: .85rem; letter-spacing: .04em; color: var(--mute); }
 .footer-links { display: flex; gap: 1.5rem; font-family: var(--mono); font-size: .8rem; text-transform: uppercase; }
 .footer-links a:hover { color: var(--accent); }
-
-/* Cursor coords (desktop only) */
-.cursor-coords {
-  position: fixed; z-index: 9998; pointer-events: none;
-  font-family: var(--mono); font-size: .7rem; color: var(--accent);
-  transform: translate(14px, -6px); opacity: 0; transition: opacity .2s;
-  white-space: nowrap;
-}
-.cursor-coords.is-active { opacity: 1; }
 
 /* =============================================================
    9. Modal (área de alumnos — demo)

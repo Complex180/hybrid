@@ -3,7 +3,6 @@
 
   const data = window.__BRAND__ || {};
   const reduced = matchMedia("(prefers-reduced-motion: reduce)").matches;
-  const fineHover = matchMedia("(hover: hover) and (pointer: fine)").matches;
 
   const $ = (sel, scope) => (scope || document).querySelector(sel);
   const $$ = (sel, scope) => Array.from((scope || document).querySelectorAll(sel));
@@ -91,19 +90,6 @@
     }
   }
 
-  function initCursorCoords() {
-    if (!fineHover) return;
-    const el = $("[data-cursor-coords]");
-    if (!el) return;
-    document.addEventListener("mousemove", e => {
-      el.style.left = e.clientX + "px";
-      el.style.top = e.clientY + "px";
-      el.textContent = "[" + e.clientX + ", " + e.clientY + "]";
-      el.classList.add("is-active");
-    });
-    document.addEventListener("mouseleave", () => el.classList.remove("is-active"));
-  }
-
   function initSmoothAnchors() {
     document.addEventListener("click", e => {
       const a = e.target.closest('a[href^="#"]');
@@ -126,7 +112,6 @@
     safe(initReveals, "initReveals");
     safe(initCountUp, "initCountUp");
     safe(initModal, "initModal");
-    safe(initCursorCoords, "initCursorCoords");
     safe(initSmoothAnchors, "initSmoothAnchors");
     document.documentElement.classList.add("is-ready");
   }
