@@ -64,6 +64,12 @@
   function getJSON(key) { try { return JSON.parse(localStorage.getItem(key) || "null"); } catch (e) { return null; } }
   function setJSON(key, val) { localStorage.setItem(key, JSON.stringify(val)); }
 
+  // saca el id de archivo de un link de Drive ("/d/<id>/" o "?id=<id>")
+  function driveId(url) {
+    var m = /\/d\/([-\w]{20,})/.exec(url || "") || /[?&]id=([-\w]{20,})/.exec(url || "");
+    return m ? m[1] : null;
+  }
+
   // semana 1-4 del mes según el día de hoy (día 1-7 = semana 1, 8-14 = semana 2, …)
   function semanaActual() {
     return Math.min(4, Math.ceil(new Date().getDate() / 7));
@@ -216,17 +222,44 @@
     var items = videosCache.filter(function (e) {
       return !f || e.nombre.toLowerCase().indexOf(f) > -1 || e.grupo.toLowerCase().indexOf(f) > -1;
     });
-    $("[data-video-list]").innerHTML = items.map(function (e) {
-      var accion = e.url
-        ? '<a class="video-badge" href="' + e.url + '" target="_blank" rel="noopener">▶ Ver video</a>'
-        : '<span class="video-badge">▶ próximamente</span>';
-      return '<div class="video-item"><div><strong>' + e.nombre + '</strong><br><small>' + e.grupo + '</small></div>' + accion + '</div>';
+    var list = $("[data-video-list]");
+    list.className = "video-grid";
+    list.innerHTML = items.map(function (e) {
+      var id = e.id || driveId(e.url);
+      var thumb = id
+        ? '<span class="video-thumb"><img src="https://drive.google.com/thumbnail?id=' + id + '&sz=w480" alt="" loading="lazy"><span class="video-play">▶</span></span>'
+        : '<span class="video-thumb"><span class="video-play">▶</span></span>';
+      var body = '<span class="video-card-body"><strong>' + e.nombre + '</strong><small>' + e.grupo + '</small></span>';
+      return id
+        ? '<button type="button" class="video-card" data-play-id="' + id + '" data-play-nombre="' + e.nombre + '">' + thumb + body + '</button>'
+        : '<div class="video-card">' + thumb + body + '</div>';
     }).join("") || '<p style="color:var(--mute);">No encontramos ejercicios con ese nombre.</p>';
+  }
+
+  function openVideo(id, nombre) {
+    $("[data-video-modal-title]").textContent = nombre;
+    $("[data-video-frame]").src = "https://drive.google.com/file/d/" + id + "/preview";
+    $("[data-video-modal]").classList.add("is-open");
+  }
+
+  function closeVideo() {
+    $("[data-video-modal]").classList.remove("is-open");
+    $("[data-video-frame]").src = "about:blank"; // corta la reproducción al cerrar
   }
 
   function initVideos() {
     renderVideoList("");
     $("[data-video-search]").addEventListener("input", function (e) { renderVideoList(e.target.value); });
+
+    $("[data-video-list]").addEventListener("click", function (e) {
+      var card = e.target.closest("[data-play-id]");
+      if (card) openVideo(card.dataset.playId, card.dataset.playNombre);
+    });
+    var modal = $("[data-video-modal]");
+    $("[data-close-video]").addEventListener("click", closeVideo);
+    modal.addEventListener("mousedown", function (e) { if (e.target === modal) closeVideo(); });
+    document.addEventListener("keydown", function (e) { if (e.key === "Escape") closeVideo(); });
+
     fetch(API_URL + "?action=videos").then(function (r) { return r.json(); }).then(function (data) {
       if (data.ok && data.videos.length) {
         videosCache = data.videos;
@@ -245,10 +278,25 @@
       archivos.map(function (a) { return '<a href="' + a.url + '" target="_blank" rel="noopener">' + a.nombre + '</a>'; }).join(", ");
   }
 
+  // si hay un PDF en la carpeta del mes, lo muestra embebido en la página
+  function renderPlanPdf(archivos) {
+    var wrap = $("[data-plan-pdf]");
+    if (!wrap) return false;
+    var pdf = (archivos || []).filter(function (a) {
+      return a.tipo === "application/pdf" && (a.id || driveId(a.url));
+    })[0];
+    if (!pdf) { wrap.hidden = true; wrap.innerHTML = ""; return false; }
+    var id = pdf.id || driveId(pdf.url);
+    wrap.hidden = false;
+    wrap.innerHTML = '<iframe src="https://drive.google.com/file/d/' + id + '/preview" title="Planificación del mes"></iframe>';
+    return true;
+  }
+
   function fetchPlan(nivel) {
     fetch(API_URL + "?action=plan&nivel=" + nivel).then(function (r) { return r.json(); }).then(function (data) {
       if (!data.ok) return;
       renderPlanArchivo(nivel, data.archivos, data.mes);
+      var hayPdf = renderPlanPdf(data.archivos);
       if (data.semanas && data.semanas.length) {
         planCache[nivel] = data.semanas;
         if (getJSON(KEYS.nivel) === nivel) {
@@ -256,6 +304,12 @@
           renderMonthly(nivel);
           if (!$("#view-form").hidden) renderRegistros(nivel);
         }
+      } else if (hayPdf && getJSON(KEYS.nivel) === nivel) {
+        // el PDF es la planificación real del mes: no mostramos las tarjetas de muestra
+        $("[data-week-dias]").innerHTML = "";
+        $("[data-week-label]").textContent = "Planificación de " + ((data.mes || "").split(" ")[1] || "este mes");
+        var monthly = document.querySelector(".monthly-card");
+        if (monthly) monthly.hidden = true;
       }
     }).catch(function () { var box = $("[data-plan-archivo]"); if (box) box.hidden = true; });
   }
@@ -278,6 +332,12 @@
     initNivel();
     initDashToolbar();
     initVideos();
+
+    var fab = $("[data-whatsapp-fab]");
+    var brand = window.__BRAND__ || {};
+    if (fab && brand.whatsapp) {
+      fab.href = "https://wa.me/" + brand.whatsapp + "?text=" + encodeURIComponent(brand.whatsappText || "Hola");
+    }
 
     var profile = getJSON(KEYS.profile);
     var nivel = getJSON(KEYS.nivel);

@@ -348,6 +348,42 @@ ul { list-style: none; }
 .video-item small { color: var(--mute); font-family: var(--mono); font-size: .75rem; text-transform: uppercase; }
 .video-badge { font-family: var(--mono); font-size: .78rem; color: var(--mute); white-space: nowrap; }
 
+/* Tarjetas de video con miniatura + reproductor embebido */
+.video-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 1rem; }
+.video-card {
+  border: 2px solid var(--ink); background: #fff; padding: 0; text-align: left;
+  cursor: pointer; display: flex; flex-direction: column; font: inherit;
+}
+.video-card:hover .video-play, .video-card:focus-visible .video-play { background: var(--accent); }
+.video-thumb { position: relative; display: block; aspect-ratio: 16 / 9; background: var(--ink); overflow: hidden; }
+.video-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.video-play {
+  position: absolute; inset: 0; margin: auto; width: 52px; height: 52px;
+  display: flex; align-items: center; justify-content: center;
+  background: rgba(14,27,48,.85); color: #fff; border-radius: 50%; font-size: 1.1rem;
+  transition: background .2s;
+}
+.video-card-body { padding: .8rem 1rem; display: flex; flex-direction: column; gap: .25rem; }
+.video-card-body strong { font-family: var(--display); text-transform: uppercase; font-size: .95rem; }
+.video-card-body small { color: var(--mute); font-family: var(--mono); font-size: .75rem; text-transform: uppercase; }
+
+.modal-box-video { max-width: 860px; padding: 1.5rem; }
+.video-frame-wrap { position: relative; aspect-ratio: 16 / 9; margin-top: 1rem; background: #000; }
+.video-frame-wrap iframe { position: absolute; inset: 0; width: 100%; height: 100%; border: 0; }
+
+/* PDF de planificación embebido */
+.plan-pdf { margin-top: 1rem; border: 2px solid var(--ink); }
+.plan-pdf iframe { display: block; width: 100%; height: min(75vh, 900px); border: 0; }
+
+/* Botón flotante de WhatsApp */
+.wa-fab {
+  position: fixed; right: 1.25rem; bottom: 1.25rem; z-index: 150;
+  width: 58px; height: 58px; border-radius: 50%; background: #25d366; color: #fff;
+  display: flex; align-items: center; justify-content: center;
+  box-shadow: 0 4px 14px rgba(14,27,48,.35); transition: transform .2s;
+}
+.wa-fab:hover { transform: scale(1.08); }
+
 /* =============================================================
    10. Reduced motion — only intrusive
    ============================================================= */
