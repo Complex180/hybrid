@@ -289,7 +289,7 @@ function crearHojaAlumnos() {
   if (!alumnosFolder) throw new Error('No existe la carpeta "Alumnos" dentro de Complex 180');
 
   var NOMBRE = "Alumnos - claves";
-  var encabezados = ["Nombre", "Email", "Clave", "Nivel", "Fecha de pago", "Perfil (JSON)", "Registros (JSON)"];
+  var encabezados = ["Nombre", "Email", "Clave", "Nivel", "Fecha de pago", "Perfil (JSON)", "Registros (JSON)", "Fecha de vencimiento"];
   var existentes = alumnosFolder.getFilesByName(NOMBRE);
   var ss;
   if (existentes.hasNext()) {
@@ -313,6 +313,50 @@ function crearHojaAlumnos() {
 
   Logger.log(ss.getUrl());
   return ss.getUrl();
+}
+
+// correr desde el editor una sola vez (idempotente, se puede correr de nuevo sin romper
+// nada). Agrega la columna H "Fecha de vencimiento" a "Alumnos - claves" con una fórmula
+// que se completa sola para cada fila que tenga "Fecha de pago" (columna E + 30 días —
+// mismo criterio que UN_MES_MS) y un semáforo de color por formato condicional: amarillo
+// cuando faltan 10 días o menos, rojo cuando faltan 5 días o menos (incluye vencidos).
+// Al agregar una fila nueva la columna H se completa sola, no hay que copiar nada.
+function configurarVencimientos() {
+  var alumnosFolder = subFolder(rootFolder(), "Alumnos");
+  var archivos = alumnosFolder ? alumnosFolder.getFilesByName("Alumnos - claves") : null;
+  if (!archivos || !archivos.hasNext()) throw new Error('No existe "Alumnos - claves"');
+  var hoja = SpreadsheetApp.open(archivos.next()).getSheets()[0];
+
+  var COL = 8; // H
+  if (String(hoja.getRange(1, COL).getValue()) !== "Fecha de vencimiento") {
+    hoja.getRange(1, COL).setValue("Fecha de vencimiento").setFontWeight("bold");
+  }
+  hoja.getRange(2, COL).setFormula('=ARRAYFORMULA(IF(E2:E="","",E2:E+30))');
+
+  var filas = Math.max(hoja.getMaxRows() - 1, 1);
+  var rango = hoja.getRange(2, COL, filas, 1);
+  rango.setNumberFormat("dd/mm/yyyy");
+
+  // saca reglas de formato condicional viejas de esta columna antes de agregar las nuevas,
+  // para poder correr esta función de nuevo sin duplicarlas
+  var reglas = hoja.getConditionalFormatRules().filter(function (r) {
+    return r.getRanges().every(function (rg) { return rg.getColumn() !== COL; });
+  });
+  reglas.push(
+    SpreadsheetApp.newConditionalFormatRule()
+      .whenFormulaSatisfied('=AND(H2<>"",H2<=TODAY()+5)')
+      .setBackground("#f4c7c3")
+      .setRanges([rango])
+      .build(),
+    SpreadsheetApp.newConditionalFormatRule()
+      .whenFormulaSatisfied('=AND(H2<>"",H2<=TODAY()+10,H2>TODAY()+5)')
+      .setBackground("#fce8b2")
+      .setRanges([rango])
+      .build()
+  );
+  hoja.setConditionalFormatRules(reglas);
+
+  return "listo";
 }
 
 // correr desde el editor si hace falta rearmar la estructura (idempotente: no duplica
