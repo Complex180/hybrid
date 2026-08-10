@@ -19,13 +19,14 @@ function doGet(e) {
   return ContentService.createTextOutput(JSON.stringify(out)).setMimeType(ContentService.MimeType.JSON);
 }
 
-// guardarDatos: el único caso de escritura. e.parameter viaja igual que en doGet
-// cuando el POST llega form-urlencoded (así lo manda profile.js con URLSearchParams).
+// guardarDatos/guardarArchivo: los dos casos de escritura. e.parameter viaja igual que en
+// doGet cuando el POST llega form-urlencoded (así lo manda profile.js con URLSearchParams).
 function doPost(e) {
   var action = (e && e.parameter && e.parameter.action) || "";
   var out;
   try {
     if (action === "guardarDatos") out = guardarDatosAlumno(e.parameter.email, e.parameter.clave, e.parameter.perfil, e.parameter.registros);
+    else if (action === "guardarArchivo") out = guardarArchivoAlumno(e.parameter.email, e.parameter.clave, e.parameter.campo, e.parameter.nombreOriginal, e.parameter.tipo, e.parameter.base64);
     else out = { ok: false, error: "accion desconocida" };
   } catch (err) {
     out = { ok: false, error: String(err) };
@@ -150,16 +151,12 @@ function test() {
 
 var UN_MES_MS = 30 * 24 * 60 * 60 * 1000; // 30 días ≈ 1 mes de validez — sin líos de meses de 28/30/31 días
 
-// valida mail + clave contra Drive > Complex 180 > Alumnos > "Alumnos - claves"
-// (columnas Nombre | Email | Clave | Nivel | Fecha de pago | Perfil (JSON) | Registros (JSON)).
-// Lucas carga una fila por alumno cuando paga; esta función es lo único que lee esa planilla.
-// El pago habilita LOS DOS planes por 1 mes desde "Fecha de pago" — "Nivel" ya no
-// restringe el acceso, solo decide qué plan se muestra primero en el dashboard.
-// Cuando el alumno vuelve a pagar, Lucas solo actualiza "Fecha de pago" y el
-// vencimiento se recalcula solo, sin tocar nada más. Devuelve también el perfil y
-// "mis registros" guardados la última vez (en cualquier dispositivo) para que el
-// alumno no tenga que completar todo de nuevo si entra desde otro celular.
-function getAlumnoLogin(email, clave) {
+// busca la fila del alumno en "Alumnos - claves"
+// (columnas Nombre | Email | Clave | Nivel | Fecha de pago | Perfil (JSON) | Registros (JSON))
+// por mail+clave — lo usan getAlumnoLogin, guardarDatosAlumno y guardarArchivoAlumno, antes
+// era la misma búsqueda copiada 2 veces.
+// Devuelve { ok:true, hoja, fila (1-based), r (valores de la fila) } o { ok:false, error }.
+function buscarFilaAlumno(email, clave) {
   var alumnosFolder = subFolder(rootFolder(), "Alumnos");
   var archivos = alumnosFolder ? alumnosFolder.getFilesByName("Alumnos - claves") : null;
   if (!archivos || !archivos.hasNext()) return { ok: false, error: "no configurado" };
@@ -168,28 +165,43 @@ function getAlumnoLogin(email, clave) {
   var claveNorm = String(clave || "").trim();
   if (!emailNorm || !claveNorm) return { ok: false, error: "faltan datos" };
 
-  var values = SpreadsheetApp.open(archivos.next()).getSheets()[0].getDataRange().getValues();
+  var hoja = SpreadsheetApp.open(archivos.next()).getSheets()[0];
+  var values = hoja.getDataRange().getValues();
   for (var i = 1; i < values.length; i++) {
     var r = values[i];
     if (String(r[1] || "").trim().toLowerCase() !== emailNorm) continue;
     if (String(r[2] || "").trim() !== claveNorm) return { ok: false, error: "clave incorrecta" };
-
-    var fechaPago = parseFecha(r[4]);
-    if (!fechaPago) return { ok: false, error: "sin fecha de pago registrada" };
-    var vencimiento = new Date(fechaPago.getTime() + UN_MES_MS);
-    if (new Date() > vencimiento) return { ok: false, error: "vencido" };
-
-    var nivel = String(r[3] || "").trim().toUpperCase();
-    return {
-      ok: true,
-      nombre: String(r[0] || "").trim(),
-      nivel: (nivel === "OPEN" || nivel === "PRO") ? nivel : "",
-      vencimiento: vencimiento.toISOString(),
-      perfil: parseJSONSeguro(r[5]),
-      registros: parseJSONSeguro(r[6])
-    };
+    return { ok: true, hoja: hoja, fila: i + 1, r: r };
   }
   return { ok: false, error: "mail no encontrado" };
+}
+
+// Lucas carga una fila por alumno cuando paga; esta función es lo único que lee esa planilla.
+// El pago habilita LOS DOS planes por 1 mes desde "Fecha de pago" — "Nivel" ya no
+// restringe el acceso, solo decide qué plan se muestra primero en el dashboard.
+// Cuando el alumno vuelve a pagar, Lucas solo actualiza "Fecha de pago" y el
+// vencimiento se recalcula solo, sin tocar nada más. Devuelve también el perfil y
+// "mis registros" guardados la última vez (en cualquier dispositivo) para que el
+// alumno no tenga que completar todo de nuevo si entra desde otro celular.
+function getAlumnoLogin(email, clave) {
+  var res = buscarFilaAlumno(email, clave);
+  if (!res.ok) return res;
+  var r = res.r;
+
+  var fechaPago = parseFecha(r[4]);
+  if (!fechaPago) return { ok: false, error: "sin fecha de pago registrada" };
+  var vencimiento = new Date(fechaPago.getTime() + UN_MES_MS);
+  if (new Date() > vencimiento) return { ok: false, error: "vencido" };
+
+  var nivel = String(r[3] || "").trim().toUpperCase();
+  return {
+    ok: true,
+    nombre: String(r[0] || "").trim(),
+    nivel: (nivel === "OPEN" || nivel === "PRO") ? nivel : "",
+    vencimiento: vencimiento.toISOString(),
+    perfil: parseJSONSeguro(r[5]),
+    registros: parseJSONSeguro(r[6])
+  };
 }
 
 // "Fecha de pago" puede llegar como Date (si Sheets la detectó como fecha) o como texto.
@@ -223,27 +235,49 @@ function parseJSONSeguro(valor) {
 // (columnas F y G) — así viajan con el mail del alumno a cualquier dispositivo.
 // Solo escribe si mail+clave matchean (misma validación que el login).
 function guardarDatosAlumno(email, clave, perfilJson, registrosJson) {
-  var alumnosFolder = subFolder(rootFolder(), "Alumnos");
-  var archivos = alumnosFolder ? alumnosFolder.getFilesByName("Alumnos - claves") : null;
-  if (!archivos || !archivos.hasNext()) return { ok: false, error: "no configurado" };
+  var res = buscarFilaAlumno(email, clave);
+  if (!res.ok) return res;
+  if (perfilJson != null) res.hoja.getRange(res.fila, 6).setValue(perfilJson);
+  if (registrosJson != null) res.hoja.getRange(res.fila, 7).setValue(registrosJson);
+  return { ok: true };
+}
 
-  var emailNorm = String(email || "").trim().toLowerCase();
-  var claveNorm = String(clave || "").trim();
-  if (!emailNorm || !claveNorm) return { ok: false, error: "faltan datos" };
+var CAMPOS_ARCHIVO = { fotoPerfil: "Foto de perfil", fotoApto: "Apto fisico" };
 
-  var hoja = SpreadsheetApp.open(archivos.next()).getSheets()[0];
-  var values = hoja.getDataRange().getValues();
-  for (var i = 1; i < values.length; i++) {
-    var r = values[i];
-    if (String(r[1] || "").trim().toLowerCase() !== emailNorm) continue;
-    if (String(r[2] || "").trim() !== claveNorm) return { ok: false, error: "clave incorrecta" };
+// guarda un archivo (foto de perfil / apto físico) que sube el alumno: valida mail+clave
+// igual que el login, y lo deja en Drive > Complex 180 > INFO ALUMNOS > <carpeta del
+// alumno>, una carpeta por alumno para tener todo junto. Devuelve el link del archivo —
+// profile.js lo guarda en el perfil (perfil.fotoPerfilUrl / perfil.fotoAptoUrl), así queda
+// asociado al alumno para siempre y viaja a cualquier dispositivo con su mail+clave, igual
+// que el resto del perfil. Si el alumno vuelve a subir el mismo campo, reemplaza el archivo
+// anterior en vez de acumular versiones viejas.
+function guardarArchivoAlumno(email, clave, campo, nombreOriginal, tipo, base64) {
+  var res = buscarFilaAlumno(email, clave);
+  if (!res.ok) return res;
 
-    var fila = i + 1;
-    if (perfilJson != null) hoja.getRange(fila, 6).setValue(perfilJson);
-    if (registrosJson != null) hoja.getRange(fila, 7).setValue(registrosJson);
-    return { ok: true };
+  var etiqueta = CAMPOS_ARCHIVO[campo];
+  if (!etiqueta) return { ok: false, error: "campo desconocido" };
+  if (!base64) return { ok: false, error: "falta el archivo" };
+
+  var nombreAlumno = String(res.r[0] || "").trim();
+  var infoAlumnos = subFolder(rootFolder(), "INFO ALUMNOS") || rootFolder().createFolder("INFO ALUMNOS");
+  var nombreCarpeta = (nombreAlumno ? nombreAlumno + " — " : "") + String(email).trim().toLowerCase();
+  var carpeta = subFolder(infoAlumnos, nombreCarpeta) || infoAlumnos.createFolder(nombreCarpeta);
+
+  // saca cualquier versión anterior de este mismo campo (puede tener otra extensión si
+  // cambió de jpg a png entre subidas)
+  var previos = carpeta.getFiles();
+  while (previos.hasNext()) {
+    var f = previos.next();
+    if (f.getName().indexOf(etiqueta) === 0) f.setTrashed(true);
   }
-  return { ok: false, error: "mail no encontrado" };
+
+  var ext = (String(nombreOriginal || "").match(/\.[^.]+$/) || [""])[0];
+  var bytes = Utilities.base64Decode(String(base64));
+  var blob = Utilities.newBlob(bytes, tipo || "application/octet-stream", etiqueta + ext);
+  var file = carpeta.createFile(blob);
+  linkShare(file);
+  return { ok: true, url: file.getUrl() };
 }
 
 // correr desde el editor si hace falta (crea la planilla si no existe, o le agrega

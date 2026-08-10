@@ -111,6 +111,34 @@
   }
   var guardarRegistrosServidor = debounce(function (log) { guardarEnServidor({ registros: log }); }, 900);
 
+  var TAMANIO_MAX_ARCHIVO = 8 * 1024 * 1024; // 8MB — límite razonable para foto/apto físico
+
+  function leerArchivoBase64(file) {
+    return new Promise(function (resolve, reject) {
+      var reader = new FileReader();
+      reader.onload = function () { resolve(String(reader.result).split(",")[1] || ""); };
+      reader.onerror = reject;
+      reader.readAsDataURL(file);
+    });
+  }
+
+  // sube "Foto de perfil" o "Apto físico" — el server lo guarda en Drive > INFO ALUMNOS
+  // y en el perfil (perfil.fotoPerfilUrl / perfil.fotoAptoUrl) para que quede asociado
+  // al alumno para siempre, en cualquier dispositivo. Devuelve el link, o null si falló.
+  function subirArchivoAlumno(campo, file) {
+    var email = localStorage.getItem(KEYS.email);
+    var clave = localStorage.getItem(KEYS.clave);
+    if (!email || !clave) return Promise.resolve(null);
+    return leerArchivoBase64(file).then(function (base64) {
+      var body = new URLSearchParams({
+        action: "guardarArchivo", email: email, clave: clave, campo: campo,
+        nombreOriginal: file.name, tipo: file.type, base64: base64
+      });
+      return fetch(API_URL, { method: "POST", body: body }).then(function (r) { return r.json(); });
+    }).then(function (data) { return (data && data.ok) ? data.url : null; })
+      .catch(function () { return null; });
+  }
+
   // ---- Acceso alumnos (mail + clave) — se valida contra la planilla de alumnos en Drive ----
   function initClave() {
     var form = $("[data-clave-form]");
@@ -175,6 +203,11 @@
       var field = form.elements[k];
       if (field && field.type !== "file") field.value = profile[k];
     });
+    ["fotoPerfil", "fotoApto"].forEach(function (campo) {
+      var status = $('[data-file-status="' + campo + '"]', form);
+      var url = profile && profile[campo + "Url"];
+      if (status) status.innerHTML = url ? 'Ya subiste este archivo — <a href="' + url + '" target="_blank" rel="noopener">ver</a>' : "";
+    });
   }
 
   function initForm() {
@@ -183,12 +216,31 @@
       e.preventDefault();
       var fd = new FormData(form);
       var profile = {};
-      fd.forEach(function (v, k) { if (!(v instanceof File)) profile[k] = v; });
-      // ponytail: fotos solo se leen en memoria del navegador, no se guardan — subida real en etapa 2.
-      setJSON(KEYS.profile, profile);
-      guardarEnServidor({ perfil: profile });
-      renderDashboard();
-      showView("view-dashboard");
+      var archivos = [];
+      fd.forEach(function (v, k) {
+        if (v instanceof File) { if (v.size) archivos.push({ campo: k, file: v }); }
+        else profile[k] = v;
+      });
+      // si no se vuelve a subir un archivo, mantiene el link que ya tenía guardado
+      var previo = getJSON(KEYS.profile) || {};
+      ["fotoPerfilUrl", "fotoAptoUrl"].forEach(function (k) { if (previo[k]) profile[k] = previo[k]; });
+
+      var grande = archivos.filter(function (a) { return a.file.size > TAMANIO_MAX_ARCHIVO; })[0];
+      if (grande) { alert('El archivo "' + grande.file.name + '" pesa más de 8MB, subí uno más liviano.'); return; }
+
+      var btn = form.querySelector("[data-form-submit]");
+      var textoOriginal = btn ? btn.textContent : "";
+      if (btn) { btn.disabled = true; btn.textContent = archivos.length ? "Subiendo…" : "Guardando…"; }
+
+      Promise.all(archivos.map(function (a) {
+        return subirArchivoAlumno(a.campo, a.file).then(function (url) { if (url) profile[a.campo + "Url"] = url; });
+      })).then(function () {
+        setJSON(KEYS.profile, profile);
+        guardarEnServidor({ perfil: profile });
+        if (btn) { btn.disabled = false; btn.textContent = textoOriginal; }
+        renderDashboard();
+        showView("view-dashboard");
+      });
     });
   }
 

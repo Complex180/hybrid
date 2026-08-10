@@ -268,6 +268,8 @@ ul { list-style: none; }
 .profile-form { margin-top: 2rem; display: flex; flex-direction: column; gap: 1.1rem; }
 .profile-form label { display: flex; flex-direction: column; gap: .4rem; font-size: .85rem; font-weight: 600; }
 .pf-opt { color: var(--mute); font-weight: 400; }
+.pf-file-status { font-weight: 400; color: var(--accent); font-family: var(--mono); font-size: .78rem; min-height: 1em; }
+.pf-file-status a { color: inherit; }
 .profile-form input, .profile-form select, .profile-form textarea {
   border: 2px solid var(--ink); padding: .7rem .85rem; font-family: var(--sans); font-size: .95rem; font-weight: 400;
   background: var(--bg); color: var(--ink);
