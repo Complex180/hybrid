@@ -87,11 +87,16 @@
     });
   }
 
+  function initServiceWorker() {
+    if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(function () {});
+  }
+
   function boot() {
     safe(initWhatsApp, "initWhatsApp");
     safe(initReveals, "initReveals");
     safe(initCountUp, "initCountUp");
     safe(initSmoothAnchors, "initSmoothAnchors");
+    safe(initServiceWorker, "initServiceWorker");
     document.documentElement.classList.add("is-ready");
   }
 
