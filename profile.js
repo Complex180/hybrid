@@ -264,6 +264,21 @@
       if (nivel) renderRegistros(nivel);
       showView("view-form");
     });
+    $("[data-logout]").addEventListener("click", cerrarSesion);
+  }
+
+  // borra todo lo guardado en este dispositivo (perfil, registros, mail/clave) y
+  // vuelve a la pantalla de clave — así otro alumno puede entrar en el mismo celular
+  // sin ver los datos del anterior.
+  function cerrarSesion() {
+    Object.keys(KEYS).forEach(function (k) { localStorage.removeItem(KEYS[k]); });
+    planCache = {};
+    videosCache = EJERCICIOS;
+    var claveForm = $("[data-clave-form]");
+    if (claveForm) claveForm.reset();
+    var msg = $("[data-clave-msg]");
+    if (msg) msg.textContent = "";
+    showView("view-clave");
   }
 
   // ---- helpers de render de un día (solo lectura) ----
