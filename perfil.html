@@ -16,7 +16,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;600;700&display=swap">
-<link rel="stylesheet" href="styles.css?v=20260813">
+<link rel="stylesheet" href="styles.css?v=20260814b">
 </head>
 <body>
 <a href="#main" class="skip-link">Saltar al contenido</a>
@@ -32,16 +32,31 @@
 
 <main id="main">
 
-  <section id="view-clave" class="section" style="max-width:560px;" hidden>
-    <p class="kicker">Acceso alumnos</p>
-    <h1 class="section-title">Ingresá tu clave</h1>
-    <p style="color:var(--ink-soft); margin-top:.5rem; max-width:60ch;">Gaby te la pasó por WhatsApp. La necesitás una sola vez para completar tu perfil.</p>
-    <form data-clave-form style="margin-top:2rem; display:flex; flex-direction:column; gap:1rem; max-width:340px;">
-      <input type="email" name="email" placeholder="Tu mail" required autocomplete="email" style="border:2px solid var(--ink); padding:.85rem 1rem; font-family:var(--mono); font-size:.95rem;">
-      <input type="password" name="clave" placeholder="Tu clave" required autocomplete="off" style="border:2px solid var(--ink); padding:.85rem 1rem; font-family:var(--mono); font-size:.95rem;">
-      <button type="submit" class="btn btn-primary">Ingresar</button>
-    </form>
-    <p data-clave-msg style="margin-top:1rem; font-family:var(--mono); font-size:.82rem; color:var(--accent); min-height:1.2em;"></p>
+  <section id="view-clave" class="login-gate" hidden>
+    <div class="login-card">
+      <div class="login-logo-wrap"><img src="assets/img/logo.jpg" alt="Complex 180"></div>
+      <p class="login-tagline">Centro de entrenamiento online</p>
+      <ul class="login-features">
+        <li><span aria-hidden="true">🎥</span> Aprendé con videos explicativos</li>
+        <li><span aria-hidden="true">💪</span> Entrenamiento 100% personalizado</li>
+        <li><span aria-hidden="true">📈</span> Registrá tus avances</li>
+      </ul>
+
+      <form data-clave-form class="login-form">
+        <label>Email<input type="email" name="email" placeholder="tu@email.com" required autocomplete="email"></label>
+        <label>Contraseña
+          <div class="login-pass-wrap">
+            <input type="password" name="clave" placeholder="Tu clave" required autocomplete="off" data-pass-input>
+            <button type="button" class="login-pass-toggle" data-pass-toggle aria-label="Mostrar contraseña">
+              <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7Z"/><circle cx="12" cy="12" r="3"/></svg>
+            </button>
+          </div>
+        </label>
+        <button type="submit" class="btn btn-accent btn-block login-submit">Entrar</button>
+      </form>
+      <p data-clave-msg class="login-msg"></p>
+      <p class="login-hint">Gaby te pasa tu clave por WhatsApp — la necesitás una sola vez para completar tu perfil.</p>
+    </div>
   </section>
 
   <section id="view-form" class="section" style="max-width:920px;">
@@ -169,6 +184,6 @@
 </footer>
 
 <script defer src="lib/manifest.js"></script>
-<script defer src="profile.js?v=20260814"></script>
+<script defer src="profile.js?v=20260814b"></script>
 </body>
 </html>

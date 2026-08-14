@@ -143,6 +143,17 @@
   function initClave() {
     var form = $("[data-clave-form]");
     if (!form) return;
+
+    var passInput = $("[data-pass-input]", form);
+    var passToggle = $("[data-pass-toggle]", form);
+    if (passInput && passToggle) {
+      passToggle.addEventListener("click", function () {
+        var visible = passInput.type === "text";
+        passInput.type = visible ? "password" : "text";
+        passToggle.setAttribute("aria-label", visible ? "Mostrar contraseña" : "Ocultar contraseña");
+      });
+    }
+
     form.addEventListener("submit", function (e) {
       e.preventDefault();
       var email = form.elements.email.value.trim();
