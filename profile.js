@@ -491,6 +491,10 @@
     if (fab && brand.whatsapp) {
       fab.href = "https://wa.me/" + brand.whatsapp + "?text=" + encodeURIComponent(brand.whatsappText || "Hola");
     }
+    var registro = $("[data-whatsapp-register]");
+    if (registro && brand.whatsapp) {
+      registro.href = "https://wa.me/" + brand.whatsapp + "?text=" + encodeURIComponent("Hola Gaby, quiero registrarme en Complex 180");
+    }
 
     if (!vigente()) { showView("view-clave"); return; }
     if (!getJSON(KEYS.profile)) { showView("view-form"); return; }

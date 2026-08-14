@@ -280,7 +280,7 @@ ul { list-style: none; }
   font-family: var(--mono); font-size: .8rem; letter-spacing: .1em; text-transform: uppercase;
   color: var(--mute); margin-bottom: 2rem;
 }
-.login-features { display: flex; flex-direction: column; gap: .5rem; margin-bottom: 2.5rem; text-align: center; }
+.login-features { display: flex; flex-direction: column; gap: .5rem; margin-bottom: 2.5rem; text-align: center; padding: 0; }
 .login-features li {
   font-family: var(--display); text-transform: uppercase; letter-spacing: -0.01em;
   color: var(--ink); font-size: 1.05rem; font-weight: 600; line-height: 1.2;
@@ -303,6 +303,8 @@ ul { list-style: none; }
 .login-submit { margin-top: .35rem; }
 .login-msg { margin-top: 1.25rem; text-align: center; font-family: var(--mono); font-size: .82rem; color: var(--accent); min-height: 1.2em; }
 .login-hint { margin-top: 1.5rem; text-align: center; color: var(--mute); font-size: .8rem; line-height: 1.5; }
+.login-register { color: var(--accent); font-weight: 700; }
+.login-register:hover { text-decoration: underline; }
 
 /* =============================================================
    9b. Profile form (perfil.html)
