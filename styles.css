@@ -274,19 +274,17 @@ ul { list-style: none; }
   padding: 4rem 1.25rem;
 }
 .login-card { width: 100%; max-width: 400px; text-align: center; }
-.login-logo-wrap { position: relative; width: 210px; margin: 0 auto 1.75rem; }
-.login-logo-wrap::before {
-  content: ""; position: absolute; inset: -25%;
-  background: radial-gradient(circle, var(--accent) 0%, transparent 68%);
-  opacity: .22; filter: blur(6px);
-}
-.login-logo-wrap img { position: relative; width: 100%; }
+.login-logo-wrap { width: 210px; margin: 0 auto 1.75rem; }
+.login-logo-wrap img { width: 100%; }
 .login-tagline {
   font-family: var(--mono); font-size: .8rem; letter-spacing: .1em; text-transform: uppercase;
   color: var(--mute); margin-bottom: 2rem;
 }
-.login-features { display: flex; flex-direction: column; gap: .85rem; margin-bottom: 2.5rem; text-align: left; }
-.login-features li { display: flex; align-items: center; gap: .7rem; color: var(--ink); font-size: .92rem; font-weight: 500; }
+.login-features { display: flex; flex-direction: column; gap: .5rem; margin-bottom: 2.5rem; text-align: center; }
+.login-features li {
+  font-family: var(--display); text-transform: uppercase; letter-spacing: -0.01em;
+  color: var(--ink); font-size: 1.05rem; font-weight: 600; line-height: 1.2;
+}
 .login-form { display: flex; flex-direction: column; gap: 1.15rem; text-align: left; }
 .login-form label { display: block; font-size: .78rem; font-weight: 600; color: var(--ink-soft); margin-bottom: .5rem; font-family: var(--mono); text-transform: uppercase; letter-spacing: .06em; }
 .login-form input {
