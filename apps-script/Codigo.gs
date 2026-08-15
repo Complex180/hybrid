@@ -51,25 +51,36 @@ function linkShare(file) {
   try { file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW); } catch (err) {}
 }
 
+// junta los videos de una carpeta y, si tiene subcarpetas (como Movilidad, que Gaby
+// organizó en Movilidad Tren Superior/Inferior/Zona Media), entra en cada una también
+// — a cualquier profundidad. "grupo" queda con el nombre de la carpeta que contiene
+// directamente al archivo, así los sub-grupos de Movilidad aparecen separados.
+function listarVideos(carpeta, videos) {
+  var files = carpeta.getFiles();
+  while (files.hasNext()) {
+    var f = files.next();
+    linkShare(f);
+    videos.push({
+      id: f.getId(),
+      nombre: f.getName().replace(/\.[^.]+$/, ""),
+      url: f.getUrl(),
+      tipo: f.getMimeType(),
+      grupo: carpeta.getName()
+    });
+  }
+  var subcarpetas = carpeta.getFolders();
+  while (subcarpetas.hasNext()) {
+    listarVideos(subcarpetas.next(), videos);
+  }
+}
+
 function getVideos() {
   var carpeta = subFolder(rootFolder(), "Videos ejercicios");
   var videos = [];
   if (carpeta) {
     var grupos = carpeta.getFolders();
     while (grupos.hasNext()) {
-      var g = grupos.next();
-      var files = g.getFiles();
-      while (files.hasNext()) {
-        var f = files.next();
-        linkShare(f);
-        videos.push({
-          id: f.getId(),
-          nombre: f.getName().replace(/\.[^.]+$/, ""),
-          url: f.getUrl(),
-          tipo: f.getMimeType(),
-          grupo: g.getName()
-        });
-      }
+      listarVideos(grupos.next(), videos);
     }
   }
   return { ok: true, videos: videos };
