@@ -273,6 +273,7 @@ ul { list-style: none; }
   display: flex; align-items: center; justify-content: center;
   padding: 4rem 1.25rem;
 }
+.login-gate[hidden] { display: none; }
 .login-card { width: 100%; max-width: 400px; text-align: center; }
 .login-logo-wrap { width: 210px; margin: 0 auto 1.75rem; }
 .login-logo-wrap img { width: 100%; animation: login-logo-pulse 2.6s ease-in-out infinite; }
