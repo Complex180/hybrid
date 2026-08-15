@@ -43,7 +43,8 @@
       { dia: "Día 5", foco: "Resistencia + movilidad", ejercicios: [
         { nombre: "Running cambios de ritmo", series: 1, reps: 35 }, { nombre: "Movilidad general", series: 1, reps: 10 }
       ]}
-    ]
+    ],
+    PERSONALIZADO: [] // no hay muestra genérica — el plan personalizado es siempre el real, de la hoja del alumno
   };
 
   var EJERCICIOS = [
@@ -59,7 +60,10 @@
 
   var KEYS = {
     profile: "complex180_profile", nivel: "complex180_nivel", log: "complex180_log",
-    vencimiento: "complex180_vencimiento", email: "complex180_email", clave: "complex180_clave"
+    vencimiento: "complex180_vencimiento", email: "complex180_email", clave: "complex180_clave",
+    nombreCuenta: "complex180_nombre_cuenta" // el "Nombre" que Lucas cargó en Alumnos - claves,
+    // no el que el alumno completó en su perfil — es el que usa el Plan Personalizado para
+    // encontrar su hoja en Drive
   };
   var $ = function (sel, scope) { return (scope || document).querySelector(sel); };
   var $$ = function (sel, scope) { return Array.from((scope || document).querySelectorAll(sel)); };
@@ -170,7 +174,8 @@
             localStorage.setItem(KEYS.vencimiento, data.vencimiento);
             localStorage.setItem(KEYS.email, email);
             localStorage.setItem(KEYS.clave, clave);
-            if (data.nivel === "OPEN" || data.nivel === "PRO") setJSON(KEYS.nivel, data.nivel);
+            if (data.nivel === "OPEN" || data.nivel === "PRO" || data.nivel === "PERSONALIZADO") setJSON(KEYS.nivel, data.nivel);
+            if (data.nombre) localStorage.setItem(KEYS.nombreCuenta, data.nombre);
             // el servidor manda el perfil/registros guardados la última vez (en cualquier dispositivo)
             if (data.perfil) setJSON(KEYS.profile, data.perfil);
             if (data.registros) setJSON(KEYS.log, data.registros);
@@ -493,7 +498,11 @@
   }
 
   function fetchPlan(nivel) {
-    fetch(API_URL + "?action=plan&nivel=" + nivel).then(function (r) { return r.json(); }).then(function (data) {
+    var url = API_URL + "?action=plan&nivel=" + nivel;
+    // Plan Personalizado: cada alumno tiene su propia hoja en la planilla, buscada por el
+    // nombre que Lucas cargó (no hay "mes" ni "OPEN/PRO" acá)
+    if (nivel === "PERSONALIZADO") url += "&nombre=" + encodeURIComponent(localStorage.getItem(KEYS.nombreCuenta) || "");
+    fetch(url).then(function (r) { return r.json(); }).then(function (data) {
       if (!data.ok) return;
       renderPlanArchivo(nivel, data.archivos, data.mes);
       var hayPdf = renderPlanPdf(data.archivos);
@@ -514,13 +523,15 @@
     }).catch(function () { var box = $("[data-plan-archivo]"); if (box) box.hidden = true; });
   }
 
-  // ---- Dashboard: cada alumno paga UN nivel (OPEN o PRO) y solo ve ese ----
+  // ---- Dashboard: cada alumno tiene UN plan (OPEN, PRO o PERSONALIZADO) y solo ve ese ----
+  var NIVEL_LABEL = { OPEN: "Nivel OPEN", PRO: "Nivel PRO", PERSONALIZADO: "Plan Personalizado" };
+
   function setNivelActivo(nivel) {
     setJSON(KEYS.nivel, nivel);
     $$("[data-toggle-nivel]").forEach(function (b) { b.classList.toggle("is-active", b.dataset.toggleNivel === nivel); });
     var profile = getJSON(KEYS.profile) || {};
     $("[data-plan-nombre]").textContent = (profile.nombre || "") + " " + (profile.apellido || "");
-    $("[data-plan-meta]").textContent = "Nivel " + nivel + (profile.ciudad ? " · " + profile.ciudad : "");
+    $("[data-plan-meta]").textContent = (NIVEL_LABEL[nivel] || nivel) + (profile.ciudad ? " · " + profile.ciudad : "");
     renderWeekly(nivel);
     renderMonthly(nivel);
     $("[data-monthly-view]").hidden = true;

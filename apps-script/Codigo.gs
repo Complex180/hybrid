@@ -10,7 +10,10 @@ function doGet(e) {
   var out;
   try {
     if (action === "videos") out = getVideos();
-    else if (action === "plan") out = getPlan(String((e.parameter.nivel || "OPEN")).toUpperCase());
+    else if (action === "plan") {
+      var nivelPedido = String(e.parameter.nivel || "OPEN").toUpperCase();
+      out = (nivelPedido === "PERSONALIZADO") ? getPlanPersonalizado(e.parameter.nombre) : getPlan(nivelPedido);
+    }
     else if (action === "login") out = getAlumnoLogin(e.parameter.email, e.parameter.clave);
     else out = { ok: false, error: "accion desconocida" };
   } catch (err) {
@@ -154,6 +157,42 @@ function parsePlanificacion(hoja) {
   return semanas;
 }
 
+// busca una hoja por nombre sin importar mayúsculas/minúsculas ni espacios de sobra —
+// los nombres de alumno no siempre se tipean idénticos
+function buscarHojaPorNombre(libro, nombre) {
+  var buscado = String(nombre || "").trim().toLowerCase();
+  if (!buscado) return null;
+  var hojas = libro.getSheets();
+  for (var i = 0; i < hojas.length; i++) {
+    if (hojas[i].getName().trim().toLowerCase() === buscado) return hojas[i];
+  }
+  return null;
+}
+
+// Plan Personalizado: a diferencia de OPEN/PRO (una hoja por mes, misma para todos), acá
+// hay UNA hoja por ALUMNO en Drive > Complex 180 > Planificaciones > PERSONALIZADO >
+// "Planificacion Personalizada", con el nombre exacto que Lucas cargó en "Alumnos - claves"
+// (columna Nombre). No devuelve "archivos" (a diferencia de getPlan) porque el archivo real
+// tiene las hojas de TODOS los alumnos personalizados juntas — compartir ese link expondría
+// los planes de los demás, así que el alumno solo ve los datos ya parseados de su propia hoja.
+function getPlanPersonalizado(nombreAlumno) {
+  var vacio = { ok: true, nivel: "PERSONALIZADO", mes: "", archivos: [], semanas: [] };
+  var plan = subFolder(rootFolder(), "Planificaciones");
+  var personalFolder = plan ? subFolder(plan, "PERSONALIZADO") : null;
+  if (!personalFolder) return vacio;
+
+  var archivos = personalFolder.getFilesByName("Planificacion Personalizada");
+  if (!archivos.hasNext()) return vacio;
+
+  var semanas = [];
+  try {
+    var libro = SpreadsheetApp.open(archivos.next());
+    var hoja = buscarHojaPorNombre(libro, nombreAlumno);
+    if (hoja) semanas = parsePlanificacion(hoja);
+  } catch (err) { semanas = []; }
+  return { ok: true, nivel: "PERSONALIZADO", mes: "", archivos: [], semanas: semanas };
+}
+
 // correr desde el editor para probar sin desplegar: Ver > Registro
 function test() {
   Logger.log(JSON.stringify(getVideos()));
@@ -208,7 +247,7 @@ function getAlumnoLogin(email, clave) {
   return {
     ok: true,
     nombre: String(r[0] || "").trim(),
-    nivel: (nivel === "OPEN" || nivel === "PRO") ? nivel : "",
+    nivel: (nivel === "OPEN" || nivel === "PRO" || nivel === "PERSONALIZADO") ? nivel : "",
     vencimiento: vencimiento.toISOString(),
     perfil: parseJSONSeguro(r[5]),
     registros: parseJSONSeguro(r[6])
@@ -320,6 +359,48 @@ function crearHojaAlumnos() {
     hoja.getRange(1, 1, 1, encabezados.length).setValues([encabezados]).setFontWeight("bold");
     hoja.setFrozenRows(1);
     hoja.autoResizeColumns(1, encabezados.length);
+  }
+
+  Logger.log(ss.getUrl());
+  return ss.getUrl();
+}
+
+// correr desde el editor una sola vez (idempotente). Crea Drive > Complex 180 >
+// Planificaciones > PERSONALIZADO > "Planificacion Personalizada", con una hoja
+// "Plantilla" de ejemplo (mismas columnas que OPEN/PRO: Semana | Dia | Foco | Ejercicio |
+// Series | Reps). Para un alumno nuevo del Plan Personalizado: duplicar la hoja Plantilla
+// (clic derecho en la solapa > Duplicar) y renombrar la copia con el nombre EXACTO que
+// tiene en "Alumnos - claves" (columna Nombre) — así lo encuentra getPlanPersonalizado().
+function crearPlanificacionPersonalizada() {
+  var plan = subFolder(rootFolder(), "Planificaciones");
+  if (!plan) throw new Error('No existe la carpeta "Planificaciones" dentro de Complex 180');
+  var personalFolder = subFolder(plan, "PERSONALIZADO") || plan.createFolder("PERSONALIZADO");
+
+  var NOMBRE = "Planificacion Personalizada";
+  var existentes = personalFolder.getFilesByName(NOMBRE);
+  var ss;
+  if (existentes.hasNext()) {
+    ss = SpreadsheetApp.open(existentes.next());
+  } else {
+    ss = SpreadsheetApp.create(NOMBRE);
+    var file = DriveApp.getFileById(ss.getId());
+    personalFolder.addFile(file);
+    DriveApp.getRootFolder().removeFile(file);
+  }
+
+  var headers = ["Semana", "Dia", "Foco", "Ejercicio", "Series", "Reps"];
+  var plantilla = ss.getSheetByName("Plantilla");
+  if (!plantilla) {
+    var primera = ss.getSheets()[0];
+    plantilla = (ss.getSheets().length === 1) ? primera.setName("Plantilla") : ss.insertSheet("Plantilla");
+  }
+  if (String(plantilla.getRange(1, 1).getValue()) !== "Semana") {
+    plantilla.getRange(1, 1, 1, headers.length).setValues([headers]).setFontWeight("bold");
+    plantilla.setFrozenRows(1);
+    plantilla.getRange(2, 1, 2, headers.length).setValues([
+      [1, "Día 1", "Fuerza tren superior", "Press banca", 4, 8],
+      [1, "Día 2", "Resistencia", "Bike ritmo moderado", 1, 20]
+    ]);
   }
 
   Logger.log(ss.getUrl());
