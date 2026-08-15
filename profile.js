@@ -356,6 +356,7 @@
 
   // ---- Videos (lee la carpeta "Videos ejercicios" del Drive vía Apps Script) ----
   var videosCache = EJERCICIOS; // arranca con la lista de muestra hasta que llegue la real
+  var carpetaVideoActual = null; // null = viendo las carpetas; si no, el nombre del grupo abierto
 
   // arma la tarjeta de un video (miniatura + nombre + grupo) — igual que antes
   function videoCard(e) {
@@ -369,28 +370,63 @@
       : '<div class="video-card">' + thumb + body + '</div>';
   }
 
-  // agrupa por "grupo" (la carpeta de Drive) para que sea más fácil ubicar un ejercicio,
-  // en el mismo orden en que Drive fue devolviendo las carpetas
-  function renderVideoList(filter) {
-    var f = (filter || "").toLowerCase();
-    var items = videosCache.filter(function (e) {
-      return !f || e.nombre.toLowerCase().indexOf(f) > -1 || e.grupo.toLowerCase().indexOf(f) > -1;
-    });
-    var list = $("[data-video-list]");
-    list.className = "video-groups";
-    if (!items.length) {
-      list.innerHTML = '<p style="color:var(--mute);">No encontramos ejercicios con ese nombre.</p>';
-      return;
-    }
+  // agrupa por "grupo" (la carpeta de Drive), en el mismo orden en que Drive fue
+  // devolviendo las carpetas
+  function agruparPorCarpeta(items) {
     var grupos = [], porGrupo = {};
     items.forEach(function (e) {
       if (!porGrupo[e.grupo]) { porGrupo[e.grupo] = []; grupos.push(e.grupo); }
       porGrupo[e.grupo].push(e);
     });
-    list.innerHTML = grupos.map(function (g) {
-      return '<div class="video-group"><p>' + g + '</p><div class="video-grid">' +
-        porGrupo[g].map(videoCard).join("") + '</div></div>';
-    }).join("");
+    return { grupos: grupos, porGrupo: porGrupo };
+  }
+
+  // pantalla inicial: una tarjeta por carpeta, como en el Drive — hay que tocarla para
+  // entrar y ver los videos de adentro
+  function renderCarpetasVideo() {
+    var list = $("[data-video-list]");
+    list.className = "folder-grid";
+    var agrupado = agruparPorCarpeta(videosCache);
+    list.innerHTML = agrupado.grupos.map(function (g) {
+      var cant = agrupado.porGrupo[g].length;
+      return '<button type="button" class="folder-card" data-open-folder="' + g.replace(/"/g, "&quot;") + '">' +
+        '<span class="folder-icon" aria-hidden="true">📁</span>' +
+        '<strong>' + g + '</strong><small>' + cant + (cant === 1 ? " video" : " videos") + '</small></button>';
+    }).join("") || '<p style="color:var(--mute);">Todavía no hay videos cargados.</p>';
+  }
+
+  var volverCarpetasHTML = '<button type="button" class="video-back" data-video-back>← Volver a las carpetas</button>';
+
+  function renderVideoList(filter) {
+    var f = (filter || "").toLowerCase();
+
+    // sin búsqueda y sin carpeta abierta: mostrar las carpetas
+    if (!f && !carpetaVideoActual) { renderCarpetasVideo(); return; }
+
+    var list = $("[data-video-list]");
+    list.className = "video-groups";
+
+    // con texto en el buscador: resultados agrupados en toda la biblioteca (sale de la carpeta)
+    if (f) {
+      var items = videosCache.filter(function (e) {
+        return e.nombre.toLowerCase().indexOf(f) > -1 || e.grupo.toLowerCase().indexOf(f) > -1;
+      });
+      if (!items.length) {
+        list.innerHTML = volverCarpetasHTML + '<p style="color:var(--mute);">No encontramos ejercicios con ese nombre.</p>';
+        return;
+      }
+      var agrupadoBusqueda = agruparPorCarpeta(items);
+      list.innerHTML = volverCarpetasHTML + agrupadoBusqueda.grupos.map(function (g) {
+        return '<div class="video-group"><p>' + g + '</p><div class="video-grid">' +
+          agrupadoBusqueda.porGrupo[g].map(videoCard).join("") + '</div></div>';
+      }).join("");
+      return;
+    }
+
+    // adentro de una carpeta puntual
+    var deLaCarpeta = videosCache.filter(function (e) { return e.grupo === carpetaVideoActual; });
+    list.innerHTML = volverCarpetasHTML + '<div class="video-group"><p>' + carpetaVideoActual + '</p><div class="video-grid">' +
+      deLaCarpeta.map(videoCard).join("") + '</div></div>';
   }
 
   function openVideo(id, nombre) {
@@ -410,7 +446,15 @@
 
     $("[data-video-list]").addEventListener("click", function (e) {
       var card = e.target.closest("[data-play-id]");
-      if (card) openVideo(card.dataset.playId, card.dataset.playNombre);
+      if (card) { openVideo(card.dataset.playId, card.dataset.playNombre); return; }
+      var folder = e.target.closest("[data-open-folder]");
+      if (folder) { carpetaVideoActual = folder.dataset.openFolder; renderVideoList(""); return; }
+      var back = e.target.closest("[data-video-back]");
+      if (back) {
+        carpetaVideoActual = null;
+        $("[data-video-search]").value = "";
+        renderVideoList("");
+      }
     });
     var modal = $("[data-video-modal]");
     $("[data-close-video]").addEventListener("click", closeVideo);
