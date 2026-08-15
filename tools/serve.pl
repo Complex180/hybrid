@@ -19,6 +19,7 @@ my %mime = (
   webp => 'image/webp',
   svg  => 'image/svg+xml',
   ico  => 'image/x-icon',
+  mp4  => 'video/mp4',
 );
 
 my $d = HTTP::Daemon->new(LocalAddr => '127.0.0.1', LocalPort => $port, ReuseAddr => 1)

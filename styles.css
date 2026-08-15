@@ -207,6 +207,25 @@ ul { list-style: none; }
 .nivel-card .btn { margin-top: 2rem; }
 @media (min-width: 720px) { .niveles-grid { grid-template-columns: 1fr 1fr; } }
 
+/* Nivel con video de fondo (ej. OPEN) */
+.nivel-card--video { position: relative; overflow: hidden; border-color: var(--ink); z-index: 0; background: linear-gradient(160deg, var(--ink) 0%, var(--accent-2) 100%); }
+.nivel-card-video {
+  position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover;
+  z-index: -2;
+}
+.nivel-card-overlay {
+  position: absolute; inset: 0;
+  background: linear-gradient(180deg, rgba(14,27,48,.82) 0%, rgba(14,27,48,.72) 55%, rgba(14,27,48,.88) 100%);
+  z-index: -1;
+}
+.nivel-card--video .nivel-name { color: #fff; }
+.nivel-card--video .nivel-para { color: rgba(255,255,255,.75); }
+.nivel-card--video .nivel-detalle { color: rgba(255,255,255,.9); }
+.nivel-card--video .nivel-items li { color: #fff; }
+.nivel-card--video .nivel-items li::before { color: var(--accent-2, var(--accent)); }
+.nivel-card--video .btn-primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+.nivel-card--video .btn-primary:hover { background: #fff; border-color: #fff; color: var(--ink); }
+
 /* Pasos */
 .pasos-grid { display: grid; gap: 1px; background: var(--line-strong); border: 1px solid var(--line-strong); }
 .paso { background: var(--bg); padding: 2rem; }

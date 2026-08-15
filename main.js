@@ -102,6 +102,27 @@
     });
   }
 
+  // Video de fondo de la tarjeta OPEN: pesa varios MB, así que solo se carga en pantallas
+  // de escritorio (mismo corte que el grid a 2 columnas), sin "ahorro de datos" activado,
+  // y recién cuando la tarjeta está por entrar en pantalla — nunca en mobile.
+  function initNivelVideo() {
+    const video = $(".nivel-card-video");
+    const src = video && video.dataset.src;
+    if (!src) return;
+    const saveData = navigator.connection && navigator.connection.saveData;
+    const isDesktop = matchMedia("(min-width: 720px)").matches;
+    if (saveData || !isDesktop || reduced) return;
+    const io = new IntersectionObserver(entries => {
+      entries.forEach(e => {
+        if (!e.isIntersecting) return;
+        video.src = src;
+        video.play().catch(function () {});
+        io.unobserve(e.target);
+      });
+    }, { threshold: 0.15 });
+    io.observe(video);
+  }
+
   function initServiceWorker() {
     if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(function () {});
   }
@@ -111,6 +132,7 @@
     safe(initPlanSelector, "initPlanSelector");
     safe(initReveals, "initReveals");
     safe(initCountUp, "initCountUp");
+    safe(initNivelVideo, "initNivelVideo");
     safe(initSmoothAnchors, "initSmoothAnchors");
     safe(initServiceWorker, "initServiceWorker");
     document.documentElement.classList.add("is-ready");
