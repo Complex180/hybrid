@@ -127,7 +127,7 @@ ul { list-style: none; }
    ============================================================= */
 .hero {
   display: grid; gap: 2.5rem;
-  padding: .5rem 1.25rem 4rem;
+  padding: 0 1.25rem 4rem;
   max-width: 1280px; margin-inline: auto;
 }
 .hero-copy { display: flex; flex-direction: column; align-items: flex-start; }
@@ -161,7 +161,7 @@ ul { list-style: none; }
 .stat-label { font-size: .75rem; text-transform: uppercase; letter-spacing: .04em; color: var(--mute); margin-top: .35rem; }
 
 @media (min-width: 960px) {
-  .hero { grid-template-columns: 1.2fr .8fr; align-items: center; padding-top: .75rem; }
+  .hero { grid-template-columns: 1.2fr .8fr; align-items: center; padding-top: 0; }
   .hero-figure { justify-self: end; }
 }
 
