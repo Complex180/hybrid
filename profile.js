@@ -514,7 +514,7 @@
     }).catch(function () { var box = $("[data-plan-archivo]"); if (box) box.hidden = true; });
   }
 
-  // ---- Dashboard: el pago habilita los dos planes, este toggle cambia cuál se ve ----
+  // ---- Dashboard: cada alumno paga UN nivel (OPEN o PRO) y solo ve ese ----
   function setNivelActivo(nivel) {
     setJSON(KEYS.nivel, nivel);
     $$("[data-toggle-nivel]").forEach(function (b) { b.classList.toggle("is-active", b.dataset.toggleNivel === nivel); });
@@ -535,7 +535,10 @@
   }
 
   function renderDashboard() {
-    setNivelActivo(getJSON(KEYS.nivel) || "OPEN");
+    var nivel = getJSON(KEYS.nivel) || "OPEN";
+    // solo se ve el nivel pagado — el otro botón ni se muestra, no hay para dónde "cambiarse" gratis
+    $$("[data-toggle-nivel]").forEach(function (b) { b.hidden = b.dataset.toggleNivel !== nivel; });
+    setNivelActivo(nivel);
   }
 
   function boot() {
