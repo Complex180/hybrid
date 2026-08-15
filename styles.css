@@ -116,12 +116,18 @@ ul { list-style: none; }
 
 @media (min-width: 960px) { .nav-links { display: flex; } }
 
+.brand-mark { display: flex; justify-content: center; padding: 1.25rem 1.25rem 0; }
+.brand-mark img { width: 140px; height: auto; animation: login-logo-pulse 2.6s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) {
+  .brand-mark img { animation: none; }
+}
+
 /* =============================================================
    6. Hero
    ============================================================= */
 .hero {
   display: grid; gap: 2.5rem;
-  padding: 3rem 1.25rem 4rem;
+  padding: 1.5rem 1.25rem 4rem;
   max-width: 1280px; margin-inline: auto;
 }
 .hero-copy { display: flex; flex-direction: column; align-items: flex-start; }
@@ -155,7 +161,7 @@ ul { list-style: none; }
 .stat-label { font-size: .75rem; text-transform: uppercase; letter-spacing: .04em; color: var(--mute); margin-top: .35rem; }
 
 @media (min-width: 960px) {
-  .hero { grid-template-columns: 1.2fr .8fr; align-items: center; padding-top: 4.5rem; }
+  .hero { grid-template-columns: 1.2fr .8fr; align-items: center; padding-top: 2rem; }
   .hero-figure { justify-self: end; }
 }
 
