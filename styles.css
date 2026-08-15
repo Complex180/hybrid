@@ -393,17 +393,16 @@ ul { list-style: none; }
 .video-item small { color: var(--mute); font-family: var(--mono); font-size: .75rem; text-transform: uppercase; }
 .video-badge { font-family: var(--mono); font-size: .78rem; color: var(--mute); white-space: nowrap; }
 
-/* Tarjetas de carpeta — pantalla inicial de Videos, una por grupo de Drive */
-.folder-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 1rem; }
+/* Tarjetas de carpeta — pantalla inicial de Videos, una fila por grupo de Drive */
+.folder-grid { display: flex; flex-direction: column; gap: .75rem; }
 .folder-card {
-  border: 2px solid var(--ink); background: #fff; padding: 1.5rem 1.25rem; text-align: left;
-  cursor: pointer; display: flex; flex-direction: column; gap: .5rem; font: inherit;
+  border: 2px solid var(--ink); background: #fff; padding: 1.1rem 1.25rem; width: 100%; text-align: left;
+  cursor: pointer; display: flex; justify-content: space-between; align-items: center; gap: 1rem; font: inherit;
   transition: background .2s, color .2s;
 }
 .folder-card:hover, .folder-card:focus-visible { background: var(--ink); color: #fff; }
-.folder-icon { font-size: 2rem; }
 .folder-card strong { font-family: var(--display); text-transform: uppercase; font-size: .95rem; }
-.folder-card small { font-family: var(--mono); font-size: .75rem; text-transform: uppercase; opacity: .6; }
+.folder-card small { font-family: var(--mono); font-size: .75rem; text-transform: uppercase; opacity: .6; white-space: nowrap; }
 
 .video-back {
   display: inline-flex; align-items: center; gap: .4rem; margin-bottom: 1.5rem;

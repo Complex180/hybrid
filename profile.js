@@ -390,7 +390,6 @@
     list.innerHTML = agrupado.grupos.map(function (g) {
       var cant = agrupado.porGrupo[g].length;
       return '<button type="button" class="folder-card" data-open-folder="' + g.replace(/"/g, "&quot;") + '">' +
-        '<span class="folder-icon" aria-hidden="true">📁</span>' +
         '<strong>' + g + '</strong><small>' + cant + (cant === 1 ? " video" : " videos") + '</small></button>';
     }).join("") || '<p style="color:var(--mute);">Todavía no hay videos cargados.</p>';
   }
