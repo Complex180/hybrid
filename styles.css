@@ -393,7 +393,9 @@ ul { list-style: none; }
 .video-item small { color: var(--mute); font-family: var(--mono); font-size: .75rem; text-transform: uppercase; }
 .video-badge { font-family: var(--mono); font-size: .78rem; color: var(--mute); white-space: nowrap; }
 
-/* Tarjetas de video con miniatura + reproductor embebido */
+/* Tarjetas de video con miniatura + reproductor embebido, agrupadas por carpeta de Drive */
+.video-groups { display: flex; flex-direction: column; gap: 2rem; }
+.video-group > p { font-family: var(--mono); font-size: .78rem; text-transform: uppercase; letter-spacing: .04em; color: var(--accent); margin-bottom: .9rem; }
 .video-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 1rem; }
 .video-card {
   border: 2px solid var(--ink); background: #fff; padding: 0; text-align: left;

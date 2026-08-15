@@ -357,23 +357,40 @@
   // ---- Videos (lee la carpeta "Videos ejercicios" del Drive vía Apps Script) ----
   var videosCache = EJERCICIOS; // arranca con la lista de muestra hasta que llegue la real
 
+  // arma la tarjeta de un video (miniatura + nombre + grupo) — igual que antes
+  function videoCard(e) {
+    var id = e.id || driveId(e.url);
+    var thumb = id
+      ? '<span class="video-thumb"><img src="https://drive.google.com/thumbnail?id=' + id + '&sz=w480" alt="" loading="lazy"><span class="video-play">▶</span></span>'
+      : '<span class="video-thumb"><span class="video-play">▶</span></span>';
+    var body = '<span class="video-card-body"><strong>' + e.nombre + '</strong><small>' + e.grupo + '</small></span>';
+    return id
+      ? '<button type="button" class="video-card" data-play-id="' + id + '" data-play-nombre="' + e.nombre + '">' + thumb + body + '</button>'
+      : '<div class="video-card">' + thumb + body + '</div>';
+  }
+
+  // agrupa por "grupo" (la carpeta de Drive) para que sea más fácil ubicar un ejercicio,
+  // en el mismo orden en que Drive fue devolviendo las carpetas
   function renderVideoList(filter) {
     var f = (filter || "").toLowerCase();
     var items = videosCache.filter(function (e) {
       return !f || e.nombre.toLowerCase().indexOf(f) > -1 || e.grupo.toLowerCase().indexOf(f) > -1;
     });
     var list = $("[data-video-list]");
-    list.className = "video-grid";
-    list.innerHTML = items.map(function (e) {
-      var id = e.id || driveId(e.url);
-      var thumb = id
-        ? '<span class="video-thumb"><img src="https://drive.google.com/thumbnail?id=' + id + '&sz=w480" alt="" loading="lazy"><span class="video-play">▶</span></span>'
-        : '<span class="video-thumb"><span class="video-play">▶</span></span>';
-      var body = '<span class="video-card-body"><strong>' + e.nombre + '</strong><small>' + e.grupo + '</small></span>';
-      return id
-        ? '<button type="button" class="video-card" data-play-id="' + id + '" data-play-nombre="' + e.nombre + '">' + thumb + body + '</button>'
-        : '<div class="video-card">' + thumb + body + '</div>';
-    }).join("") || '<p style="color:var(--mute);">No encontramos ejercicios con ese nombre.</p>';
+    list.className = "video-groups";
+    if (!items.length) {
+      list.innerHTML = '<p style="color:var(--mute);">No encontramos ejercicios con ese nombre.</p>';
+      return;
+    }
+    var grupos = [], porGrupo = {};
+    items.forEach(function (e) {
+      if (!porGrupo[e.grupo]) { porGrupo[e.grupo] = []; grupos.push(e.grupo); }
+      porGrupo[e.grupo].push(e);
+    });
+    list.innerHTML = grupos.map(function (g) {
+      return '<div class="video-group"><p>' + g + '</p><div class="video-grid">' +
+        porGrupo[g].map(videoCard).join("") + '</div></div>';
+    }).join("");
   }
 
   function openVideo(id, nombre) {
