@@ -275,7 +275,14 @@ ul { list-style: none; }
 }
 .login-card { width: 100%; max-width: 400px; text-align: center; }
 .login-logo-wrap { width: 210px; margin: 0 auto 1.75rem; }
-.login-logo-wrap img { width: 100%; }
+.login-logo-wrap img { width: 100%; animation: login-logo-pulse 2.6s ease-in-out infinite; }
+@keyframes login-logo-pulse {
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.06); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .login-logo-wrap img { animation: none; }
+}
 .login-tagline {
   font-family: var(--mono); font-size: .8rem; letter-spacing: .1em; text-transform: uppercase;
   color: var(--mute); margin-bottom: 2rem;
